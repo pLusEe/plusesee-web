@@ -61,8 +61,7 @@
 
 .ringItem {
   position: absolute;
-  width: clamp(144px, 18vw, 240px);
-  /* Increased by 1.2x from original */
+  width: clamp(173px, 21.6vw, 288px);
   aspect-ratio: 16/9;
   cursor: pointer;
 }

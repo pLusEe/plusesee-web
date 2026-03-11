@@ -8,8 +8,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body>
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <CustomCursor />
         <div className="layout-container">
           <header className="header">
@@ -17,8 +17,9 @@ export default function RootLayout({ children }) {
               <a href="/" className="logo">plusesee.me</a>
             </div>
             <nav className="nav">
-              <a href="/#ring">Projects</a>
-              <a href="/#ai-chat">Ask AI</a>
+              <a href="#">personal design</a>
+              <a href="#">commercial design</a>
+              <a href="#">other works</a>
               <a href="/admin" className="admin-link">管理后台</a>
             </nav>
           </header>

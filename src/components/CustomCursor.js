@@ -6,6 +6,7 @@ import styles from "./CustomCursor.module.css";
 export default function CustomCursor() {
   const [position, setPosition] = useState({ x: -100, y: -100 }); // Start off-screen
   const [hoverData, setHoverData] = useState({ active: false, text: "" });
+  const [isClickable, setIsClickable] = useState(false);
   const [isVisible, setIsVisible] = useState(false); // Only show after move
 
   useEffect(() => {
@@ -15,14 +16,19 @@ export default function CustomCursor() {
     };
 
     const handleMouseOver = (e) => {
-      const target = e.target.closest("[data-hover-text]");
-      if (target) {
+      // Data-hover text (large black circle) takes priority
+      const hoverTextTarget = e.target.closest("[data-hover-text]");
+      if (hoverTextTarget) {
         setHoverData({
           active: true,
-          text: target.getAttribute("data-hover-text"),
+          text: hoverTextTarget.getAttribute("data-hover-text"),
         });
+        setIsClickable(false);
       } else {
         setHoverData({ active: false, text: "" });
+        // Check for general clickable elements for hollow circle
+        const clickableTarget = e.target.closest("a, button, [role='button']");
+        setIsClickable(!!clickableTarget);
       }
     };
 
@@ -37,7 +43,9 @@ export default function CustomCursor() {
 
   return (
     <div
-      className={`${styles.cursor} ${hoverData.active ? styles.active : ""} ${isVisible ? styles.visible : ""}`}
+      className={`${styles.cursor} ${hoverData.active ? styles.active : ""} ${
+        isClickable && !hoverData.active ? styles.clickable : ""
+      } ${isVisible ? styles.visible : ""}`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,

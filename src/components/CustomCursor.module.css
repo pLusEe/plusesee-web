@@ -26,6 +26,13 @@
   mix-blend-mode: normal;
 }
 
+.clickable {
+  width: 48px;
+  height: 48px;
+  background-color: transparent;
+  border: 1.5px solid #000;
+}
+
 .text {
   font-size: 0.7rem;
   font-weight: 700;

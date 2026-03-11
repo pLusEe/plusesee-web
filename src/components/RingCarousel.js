@@ -125,11 +125,11 @@ export default function RingCarousel({ items }) {
         // User scrolling down: Accumulate permanently
         continuousDownScroll.current += e.deltaY;
 
-        // Phase 1: Pure rotation (first 200px of accumulated downward scroll)
-        if (continuousDownScroll.current < 200) {
+        // Phase 1: Pure rotation (first 250px of accumulated downward scroll)
+        if (continuousDownScroll.current < 250) {
           wheelAngle.set(wheelAngle.get() - e.deltaY * 0.15);
         } 
-        // Phase 2: Push away & Snap (scroll > 200px)
+        // Phase 2: Push away & Snap (scroll > 250px)
         else {
           // Still rotate very slightly for flavor
           wheelAngle.set(wheelAngle.get() - e.deltaY * 0.05);
@@ -214,8 +214,10 @@ export default function RingCarousel({ items }) {
             <div
               key={`${item.id}-${i}`}
               className={styles.ringItem}
+              role="button"
+              tabIndex={0}
               style={{
-                transform: `rotateY(${angle}deg) translateZ(1100px) rotateY(90deg)`,
+                transform: `rotateY(${angle}deg) translateZ(850px) rotateY(90deg)`,
                 transformStyle: "preserve-3d",
               }}
               onClick={() => setSelectedItem(item)}
