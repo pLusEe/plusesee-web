@@ -22,25 +22,7 @@ export default function Home() {
   };
 
   return (
-    <>
-      {/* Immersive Animated Glitch Background */}
-      <img 
-        src="/ok.png"
-        alt="Background"
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          objectFit: "cover",
-          zIndex: 0, // Set to 0 to sit above the root body background
-          opacity: 0.05, // 5% opacity
-          filter: "brightness(1.2) contrast(0.9)", // Softly brightened by 1.2x
-          pointerEvents: "none"
-        }}
-      />
-      <div className="snap-container" style={{ position: "relative", zIndex: 1 }}>
+    <div className="snap-container" style={{ position: "relative", zIndex: 1 }}>
 
       {/* Section 1: 3D Ring Carousel */}
       <section id="ring" className="snap-section">
@@ -65,6 +47,5 @@ export default function Home() {
         <AIChatSection />
       </section>
     </div>
-    </>
   );
 }
