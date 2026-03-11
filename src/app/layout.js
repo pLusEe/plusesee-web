@@ -1,10 +1,9 @@
 import "./globals.css";
-import AIChat from "../components/AIChat";
 import CustomCursor from "../components/CustomCursor";
 
 export const metadata = {
-  title: "d3adrabbit | Portfolio",
-  description: "Monochromatic architectural portfolio",
+  title: "plusesee.me | Portfolio",
+  description: "Design portfolio by plusesee",
 };
 
 export default function RootLayout({ children }) {
@@ -15,29 +14,19 @@ export default function RootLayout({ children }) {
         <div className="layout-container">
           <header className="header">
             <div className="logo-area">
-              <h1>plusesee.me</h1>
+              <a href="/" className="logo">plusesee.me</a>
             </div>
             <nav className="nav">
-              <a href="/">Projects</a>
-              <a href="/info">Info</a>
-              <a href="/contact">Contact</a>
+              <a href="/#ring">Projects</a>
+              <a href="/#ai-chat">Ask AI</a>
+              <a href="/admin" className="admin-link">管理后台</a>
             </nav>
           </header>
 
           <main className="main-content">
             {children}
           </main>
-
-          <footer className="footer">
-            <div className="footer-left">
-              <span>©2024 d3adrabbit</span>
-            </div>
-            <div className="footer-right">
-              <span>Architectural Designer</span>
-            </div>
-          </footer>
         </div>
-        <AIChat />
       </body>
     </html>
   );

@@ -28,6 +28,9 @@ html, body {
   line-height: 1.2;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+  height: 100%;
 }
 
 /* Hide default cursor globally to support custom cursor */
@@ -66,8 +69,12 @@ h1, h2, h3 {
   color: white;
 }
 
-.logo-area h1 {
+.logo-area h1,
+.logo {
   font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
   margin: 0;
 }
 
@@ -100,5 +107,53 @@ h1, h2, h3 {
     mix-blend-mode: normal;
     background: white;
     color: black;
+  }
+}
+
+/* Scroll Snapping Classes */
+.snap-container {
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  /* Hide scrollbar for cleaner look */
+  scrollbar-width: none;
+}
+.snap-container::-webkit-scrollbar {
+  display: none;
+}
+
+.snap-section {
+  height: 100vh;
+  width: 100vw;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  position: relative;
+}
+
+/* Scroll Arrow Animation */
+.scroll-arrow {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 2rem;
+  color: #000;
+  cursor: pointer;
+  z-index: 50;
+  animation: bounceArrow 2s infinite ease-in-out;
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+.scroll-arrow:hover {
+  opacity: 1;
+}
+
+@keyframes bounceArrow {
+  0%, 100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 15px);
   }
 }
