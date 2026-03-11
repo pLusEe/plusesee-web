@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import RingGallery from "../components/RingGallery";
+import Carousel3D from "../components/Carousel3D";
 
 const ROLES = [
   "Architects.",
@@ -25,6 +25,6 @@ export default function Home() {
   if (items.length === 0) return null;
 
   return (
-    <RingGallery items={items} />
+    <Carousel3D items={items} />
   );
 }
