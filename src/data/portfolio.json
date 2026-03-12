@@ -1,42 +1,128 @@
 [
   {
     "id": "1",
-    "title": "R7-TN2",
-    "category": "personal",
-    "description": "A man in a futuristic capsule.",
-    "imageUrl": "/placeholder1.jpg",
-    "prompt": "NIJI 6 STYLE RAW"
+    "title": "游神游人 I",
+    "category": "personal design",
+    "description": "游神游人系列 第一张",
+    "imageUrl": "/works_img/游神游人_1_伊势杏太_来自小红书网页版.jpg"
   },
   {
     "id": "2",
-    "title": "QX-42L",
-    "category": "commercial",
-    "description": "A futuristic cube structure with people.",
-    "imageUrl": "/placeholder2.jpg",
-    "prompt": "NIJI 6 STYLE RAW"
+    "title": "游神游人 II",
+    "category": "personal design",
+    "description": "游神游人系列 第二张",
+    "imageUrl": "/works_img/游神游人_2_伊势杏太_来自小红书网页版.jpg"
   },
   {
     "id": "3",
-    "title": "ZX-01A",
-    "category": "personal",
-    "description": "A man defending against bulls.",
-    "imageUrl": "/placeholder3.jpg",
-    "prompt": "NIJI 6 STYLE RAW"
+    "title": "游神游人 III",
+    "category": "personal design",
+    "description": "游神游人系列 第三张",
+    "imageUrl": "/works_img/游神游人_3_伊势杏太_来自小红书网页版.jpg"
   },
   {
     "id": "4",
-    "title": "V8-EX9",
-    "category": "others",
-    "description": "A man caught by bulls in a capsule.",
-    "imageUrl": "/placeholder4.jpg",
-    "prompt": "NIJI 6 STYLE RAW"
+    "title": "游神游人 IV",
+    "category": "personal design",
+    "description": "游神游人系列 第四张",
+    "imageUrl": "/works_img/游神游人_4_伊势杏太_来自小红书网页版.jpg"
   },
   {
     "id": "5",
-    "title": "CY-99B",
-    "category": "personal",
-    "description": "A man in his 20's, dressed in all white, in a futuristic Time Machine capsule being slowly pulled apart by two oxen, surrounded by angry people from his past staring at him, in the style of Matthew Barney.",
-    "imageUrl": "/placeholder5.jpg",
-    "prompt": "NIJI 6 STYLE RAW"
+    "title": "游神游人 V",
+    "category": "personal design",
+    "description": "游神游人系列 第五张",
+    "imageUrl": "/works_img/游神游人_5_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "6",
+    "title": "游神游人 VI",
+    "category": "personal design",
+    "description": "游神游人系列 第六张",
+    "imageUrl": "/works_img/游神游人_6_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "7",
+    "title": "游神游人 VII",
+    "category": "personal design",
+    "description": "游神游人系列 第七张",
+    "imageUrl": "/works_img/游神游人_7_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "8",
+    "title": "游神游人 VIII",
+    "category": "personal design",
+    "description": "游神游人系列 第八张",
+    "imageUrl": "/works_img/游神游人_8_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "9",
+    "title": "游神游人 IX",
+    "category": "personal design",
+    "description": "游神游人系列 第九张",
+    "imageUrl": "/works_img/游神游人_9_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "10",
+    "title": "游神游人 X",
+    "category": "personal design",
+    "description": "游神游人系列 第十张",
+    "imageUrl": "/works_img/游神游人_10_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "11",
+    "title": "游神游人 XI",
+    "category": "personal design",
+    "description": "游神游人系列 第十一张",
+    "imageUrl": "/works_img/游神游人_11_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "12",
+    "title": "Kodak Charmera I",
+    "category": "personal design",
+    "description": "kodak charmera之非常cult 第一张",
+    "imageUrl": "/works_img/kodak charmera之非常cult_1_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "13",
+    "title": "Kodak Charmera II",
+    "category": "personal design",
+    "description": "kodak charmera之非常cult 第二张",
+    "imageUrl": "/works_img/kodak charmera之非常cult_2_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "14",
+    "title": "Kodak Charmera III",
+    "category": "personal design",
+    "description": "kodak charmera之非常cult 第三张",
+    "imageUrl": "/works_img/kodak charmera之非常cult_3_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "15",
+    "title": "葛瑞夫",
+    "category": "personal design",
+    "description": "葛瑞夫每次拿起锤子都在自己身上耗去一小片",
+    "imageUrl": "/works_img/葛瑞夫每次拿起锤子都在自己身上耗去一小片_1_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "16",
+    "title": "🌬️ V",
+    "category": "personal design",
+    "description": "风系列 第五张",
+    "imageUrl": "/works_img/🌬️_5_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "17",
+    "title": "🌬️ VI",
+    "category": "personal design",
+    "description": "风系列 第六张",
+    "imageUrl": "/works_img/🌬️_6_伊势杏太_来自小红书网页版.jpg"
+  },
+  {
+    "id": "18",
+    "title": "🌬️ VII",
+    "category": "personal design",
+    "description": "风系列 第七张",
+    "imageUrl": "/works_img/🌬️_7_伊势杏太_来自小红书网页版.jpg"
   }
 ]
