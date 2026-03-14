@@ -1,107 +1,162 @@
-"use client";
+ "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./PersonalDesign.module.css";
+import portfolio from "../../data/portfolio.json";
 
-function getThumb(item) {
-  if (item.thumbUrl) return item.thumbUrl;
-  if ((item.mediaType || "image") === "image" && item.mediaUrl) return item.mediaUrl;
-  if (item.imageUrl) return item.imageUrl;
+const getThumb = (item) => {
+  if (item?.thumbUrl) return item.thumbUrl;
+  if ((item?.mediaType || "image") === "image" && item?.mediaUrl) return item.mediaUrl;
+  if (item?.imageUrl) return item.imageUrl;
   return "/placeholder1.jpg";
-}
+};
 
 export default function PersonalDesignPage() {
-  const [items, setItems] = useState([]);
-  const [activeSection, setActiveSection] = useState(0);
+  const items = Array.isArray(portfolio) ? portfolio : [];
+  const personalItems = useMemo(
+    () => items.filter((item) => item.category === "personal design"),
+    [items]
+  );
+  const pageItems = personalItems.length > 0 ? personalItems : items;
+  const safeItems = pageItems.length > 0 ? pageItems : [{ id: "placeholder" }];
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [targetIndex, setTargetIndex] = useState(0);
+  const [flipDirection, setFlipDirection] = useState(1);
+  const [isFlipping, setIsFlipping] = useState(false);
+  const wheelLock = useRef(false);
+  const pageRef = useRef(null);
+  const rightLeafRef = useRef(null);
+
+  const currentItem = safeItems[currentIndex % safeItems.length];
+  const nextIndex = (currentIndex + 1) % safeItems.length;
+  const prevIndex = (currentIndex - 1 + safeItems.length) % safeItems.length;
+  const rightItem =
+    isFlipping && flipDirection < 0
+      ? safeItems[prevIndex]
+      : isFlipping
+        ? safeItems[nextIndex]
+        : safeItems[nextIndex];
 
   useEffect(() => {
-    fetch("/api/portfolio")
-      .then((r) => r.json())
-      .then((data) =>
-        setItems(data.filter((i) => (i.category || "").toLowerCase() === "personal design"))
-      )
-      .catch(console.error);
-  }, []);
+    const page = pageRef.current;
+    if (!page) return;
 
-  const sections = items.length ? Math.ceil(items.length / 6) : 1;
-  const sectionItems = (n) => items.slice(n * 6, (n + 1) * 6);
+    const handleWheel = (event) => {
+      event.preventDefault();
+      if (wheelLock.current || isFlipping || safeItems.length <= 1) return;
+
+      const direction = event.deltaY > 0 ? 1 : -1;
+      const next =
+        direction > 0 ? (currentIndex + 1) % safeItems.length : (currentIndex - 1 + safeItems.length) % safeItems.length;
+
+      wheelLock.current = true;
+      setFlipDirection(direction);
+      setTargetIndex(next);
+      setIsFlipping(true);
+    };
+
+    page.addEventListener("wheel", handleWheel, { passive: false });
+    return () => page.removeEventListener("wheel", handleWheel);
+  }, [currentIndex, isFlipping, safeItems.length]);
+
+  useEffect(() => {
+    if (!isFlipping) return;
+    const page = rightLeafRef.current;
+    if (!page) return;
+
+    let rafId;
+    const duration = 900;
+    const start = performance.now();
+    const direction = flipDirection;
+
+    const easeInOut = (t) =>
+      t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+    const animate = (time) => {
+      const progress = Math.min(1, (time - start) / duration);
+      const eased = easeInOut(progress);
+      const angle = (direction > 0 ? -180 : 180) * eased;
+      const lift = Math.sin(Math.PI * eased) * 6;
+      page.style.transform = `rotateY(${angle}deg) translateZ(${lift}px)`;
+
+      if (progress < 1) {
+        rafId = requestAnimationFrame(animate);
+      } else {
+        page.style.transform = "rotateY(0deg)";
+        setCurrentIndex(targetIndex);
+        setIsFlipping(false);
+        wheelLock.current = false;
+      }
+    };
+
+    rafId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(rafId);
+  }, [isFlipping, flipDirection, targetIndex]);
 
   return (
-    <div className={styles.bookPage}>
-      {/* Dotted grid background - technical canvas */}
-      <div className={styles.gridBg} aria-hidden />
+    <div ref={pageRef} className={styles.bookPage}>
+      <div className={styles.gridBg} />
 
-      {/* Book spread container */}
       <div className={styles.bookSpread}>
-        {/* Left page - fixed functional sidebar */}
         <aside className={styles.leftPage}>
           <div className={styles.sidebarInner}>
-            <Link href="/" className={styles.sidebarLogo}>plusesee.me</Link>
-            <nav className={styles.sidebarNav}>
-              <span className={styles.sidebarLabel}>Personal Design</span>
-              <Link href="/" className={styles.sidebarLink}>← Home</Link>
-              <Link href="/admin" className={styles.sidebarLink}>Admin</Link>
-            </nav>
+            <a className={styles.sidebarLogo} href="/">
+              PLUSESEE
+            </a>
+
+            <div className={styles.sidebarNav}>
+              <div className={styles.sidebarLabel}>Work</div>
+              <a className={styles.sidebarLink} href="/">
+                Home
+              </a>
+              <a className={styles.sidebarLink} href="/personal-design">
+                Personal Design
+              </a>
+            </div>
+
             <div className={styles.sidebarIndex}>
-              <span className={styles.indexLabel}>Index</span>
-              {Array.from({ length: sections }, (_, i) => (
-                <button
-                  key={i}
-                  className={`${styles.indexItem} ${activeSection === i ? styles.indexActive : ""}`}
-                  onClick={() => setActiveSection(i)}
-                >
-                  {i + 1}
-                </button>
-              ))}
+              <div className={styles.indexLabel}>Index</div>
+              <button className={`${styles.indexItem} ${styles.indexActive}`} type="button">
+                01
+              </button>
+              <button className={styles.indexItem} type="button">
+                02
+              </button>
             </div>
           </div>
         </aside>
 
-        {/* Book spine - crease image */}
-        <div className={styles.spine} aria-hidden>
+        <div className={styles.spine}>
           <div className={styles.spineImage} />
         </div>
 
-        {/* Right page - floating white paper */}
-        <article className={styles.rightPage}>
-          {/* Running heads */}
-          <header className={styles.runningHead}>
-            <span className={styles.folioLeft}>Vol. 01</span>
-            <span className={styles.folioRight}>Index</span>
-          </header>
-
-          <div className={styles.paperContent}>
-            {/* Section slides - page-turn feel */}
-            {Array.from({ length: sections }, (_, i) => (
-              <section
-                key={i}
-                className={`${styles.paperSection} ${activeSection === i ? styles.paperActive : ""}`}
-              >
-                <div className={styles.galleryGrid}>
-                  {sectionItems(i).map((item) => (
-                    <figure key={item.id} className={styles.galleryItem}>
-                      <div className={styles.galleryImage}>
-                        <img src={getThumb(item)} alt={item.title} />
-                      </div>
-                      <figcaption className={styles.galleryCaption}>
-                        <strong>{item.title}</strong>
-                        {item.description && (
-                          <span className={styles.galleryDesc}>{item.description}</span>
-                        )}
-                      </figcaption>
-                    </figure>
-                  ))}
-                </div>
-              </section>
-            ))}
+        <section className={styles.rightPage}>
+          <div className={styles.pageFill}>
+            <img
+              src={getThumb(currentItem)}
+              alt={currentItem?.title || "Personal design image"}
+              className={styles.pageImage}
+            />
           </div>
+        </section>
 
-          {/* Page folio - bottom corners */}
-          <footer className={styles.pageFolio}>
-            <span className={styles.folioNum}>{activeSection + 1} / {sections}</span>
-          </footer>
-        </article>
+        <div className={`${styles.spine} ${styles.spineSecondary}`}>
+          <div className={styles.spineImage} />
+        </div>
+
+        <section
+          ref={rightLeafRef}
+          className={`${styles.rightLeaf} ${isFlipping ? styles.isFlipping : ""}`}
+        >
+          <div className={styles.pageFill}>
+            <img
+              src={getThumb(rightItem)}
+              alt={rightItem?.title || "Personal design image"}
+              className={styles.pageImage}
+            />
+          </div>
+        </section>
       </div>
     </div>
   );

@@ -3,11 +3,12 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
 
 .bookPage {
-  min-height: 100vh;
+  height: 100vh;
   background: #ffffff;
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  padding: 6rem 2rem 2rem; /* top padding for fixed header */
+  padding: 7.75rem 2rem 3.875rem; /* top padding for fixed header */
   position: relative;
+  overflow: hidden;
 }
 
 /* Grid hidden - pure white background */
@@ -20,10 +21,19 @@
   position: relative;
   z-index: 1;
   display: flex;
-  max-width: 1400px;
+  width: 80vw;
+  max-width: 1600px;
   margin: 0 auto;
-  min-height: calc(100vh - 4rem);
+  height: calc(100vh - 11.625rem);
+  min-height: 0;
   background: #fff;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  perspective: 1600px;
+  --sidebar-width: 280px;
+  --spine-width: 48px;
+  --spine-half: calc(var(--spine-width) / 2);
 }
 
 /* ─── Left page - fixed functional sidebar ───────────────────── */
@@ -36,10 +46,8 @@
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow:
-    0 4px 6px rgba(0, 0, 0, 0.04),
-    0 12px 24px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
+  min-height: 0;
 }
 
 .sidebarInner {
@@ -124,11 +132,15 @@
 
 /* ─── Book spine - crease image (true alpha PNG) ─── */
 .spine {
-  width: 32px;
-  flex-shrink: 0;
-  position: relative;
+  width: var(--spine-width);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--sidebar-width) - var(--spine-half));
   overflow: hidden;
   background: transparent;
+  z-index: 3;
+  pointer-events: none;
 }
 
 .spineImage {
@@ -137,8 +149,9 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: url(/crease-spine-alpha.png) center center / 100% 100% no-repeat;
-  opacity: 0.35;
+  background: url(/crease-multiply.png) center center / 100% 100% no-repeat;
+  opacity: 0.8;
+  mix-blend-mode: multiply;
 }
 
 /* ─── Right page - floating white paper ──────────────────────── */
@@ -147,20 +160,60 @@
   min-width: 0;
   background: #ffffff;
   border: 0;
-  box-shadow: 
-    0 4px 6px rgba(0, 0, 0, 0.04),
-    0 12px 24px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.02);
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   position: relative;
+  min-height: 0;
+  z-index: 1;
 }
 
+.spineSecondary {
+  width: var(--spine-width);
+  left: calc(
+    var(--sidebar-width) + (100% - var(--sidebar-width)) / 2 - var(--spine-half)
+  );
+}
+
+.rightLeaf {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  min-height: 0;
+  z-index: 1;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.pageFill {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.pageImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.isFlipping .pageFill {
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
 /* Running heads - extreme corners */
 .runningHead {
   display: flex;
   justify-content: space-between;
-  padding: 1.5rem 2.5rem 0;
+  padding: 1rem 2rem 0;
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -179,30 +232,25 @@
 /* Paper content - generous leading */
 .paperContent {
   flex: 1;
-  padding: 2rem 2.5rem 3rem;
+  padding: 1.5rem 2rem 2rem;
   overflow: hidden;
   position: relative;
+  perspective: 1400px;
 }
 
-.paperSection {
+.pageSheet {
   position: absolute;
-  inset: 2rem 2.5rem 3rem 2rem;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
-
-.paperSection.paperActive {
-  position: relative;
-  opacity: 1;
-  pointer-events: auto;
+  inset: 1.5rem 2rem 2rem 1.5rem;
+  transform-origin: left center;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 /* Gallery grid - tactile, book-like */
 .galleryGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
+  gap: 1.4rem;
   line-height: 1.65; /* generous leading */
 }
 
@@ -213,7 +261,7 @@
 .galleryImage {
   aspect-ratio: 4 / 3;
   overflow: hidden;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
 }
 
 .galleryImage img {
@@ -242,7 +290,7 @@
 
 /* Page folio - bottom */
 .pageFolio {
-  padding: 1rem 2.5rem 1.5rem;
+  padding: 0.75rem 2rem 1rem;
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -263,6 +311,9 @@
 
   .bookSpread {
     flex-direction: column;
+    width: 100%;
+    max-width: none;
+    height: calc(100vh - 2rem);
   }
 
   .leftPage {
@@ -286,6 +337,11 @@
   .spine {
     width: 100%;
     height: 24px;
+  }
+
+  .spineSecondary,
+  .rightLeaf {
+    display: none;
   }
 
   .spineImage {
