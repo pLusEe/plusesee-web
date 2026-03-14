@@ -72,6 +72,9 @@ export default function PersonalDesignPage() {
   const pagesRef = useRef([]);
   const flipLock = useRef(false);
   const inputLock = useRef(0);
+  const navAnimatingRef = useRef(false);
+  const navTokenRef = useRef(0);
+  const performFlipRef = useRef(null);
   const [currentSpreadStart, setCurrentSpreadStart] = useState(1);
 
   const updateZIndexes = useCallback(() => {
@@ -79,6 +82,10 @@ export default function PersonalDesignPage() {
     if (!pageEls.length) return;
     const total = pageEls.length;
     pageEls.forEach((page, idx) => {
+      if (page.classList.contains(styles.flipping)) {
+        page.style.zIndex = String(total + 1000);
+        return;
+      }
       if (page.classList.contains(styles.turned)) {
         page.style.zIndex = String(idx + 1);
       } else {
@@ -106,6 +113,7 @@ export default function PersonalDesignPage() {
     const totalPages = pageEls.length * 2;
     const spreadStart = firstUnturned === -1 ? Math.max(1, totalPages - 1) : firstUnturned * 2 + 1;
     setCurrentSpreadStart(spreadStart);
+
   }, []);
 
   useEffect(() => {
@@ -123,38 +131,55 @@ export default function PersonalDesignPage() {
       return -1;
     };
 
-    const performFlip = (action, targetIndex) => {
-      if (flipLock.current) return;
-      const page = pageEls[targetIndex];
-      if (!page) return;
+    const performFlip = (action, targetIndex) =>
+      new Promise((resolve) => {
+        if (flipLock.current) return resolve(false);
+        const page = pageEls[targetIndex];
+        if (!page) return resolve(false);
 
-      flipLock.current = true;
-      page.classList.add(styles.flipping);
-      if (action === "turn") {
-        page.classList.add(styles.turned);
-      } else {
-        page.classList.remove(styles.turned);
-      }
+        flipLock.current = true;
+        page.classList.add(styles.flipping);
+        if (action === "turn") {
+          page.style.transform = "rotateY(-180deg)";
+        } else {
+          page.style.transform = "rotateY(0deg)";
+        }
 
-      updateZIndexes();
-
-      const handleEnd = (event) => {
-        if (event.propertyName !== "transform") return;
-        flipLock.current = false;
         updateZIndexes();
-        page.classList.remove(styles.flipping);
-        page.removeEventListener("transitionend", handleEnd);
-      };
 
-      page.addEventListener("transitionend", handleEnd);
-
-      setTimeout(() => {
-        if (flipLock.current) {
+        const handleEnd = (event) => {
+          if (event.propertyName !== "transform") return;
           flipLock.current = false;
           updateZIndexes();
-        }
-      }, 1700);
-    };
+          page.classList.remove(styles.flipping);
+          if (action === "turn") {
+            page.classList.add(styles.turned);
+          } else {
+            page.classList.remove(styles.turned);
+          }
+          page.style.transform = "";
+          page.removeEventListener("transitionend", handleEnd);
+          resolve(true);
+        };
+
+        page.addEventListener("transitionend", handleEnd);
+
+        setTimeout(() => {
+          if (flipLock.current) {
+            flipLock.current = false;
+            updateZIndexes();
+            if (action === "turn") {
+              page.classList.add(styles.turned);
+            } else {
+              page.classList.remove(styles.turned);
+            }
+            page.style.transform = "";
+            resolve(true);
+          }
+        }, 700);
+      });
+
+    performFlipRef.current = performFlip;
 
     const handleClickFactory = (idx) => () => {
       if (flipLock.current) return;
@@ -187,6 +212,7 @@ export default function PersonalDesignPage() {
     });
 
     const handleWheel = (event) => {
+      if (navAnimatingRef.current) return;
       const now = Date.now();
       if (now - inputLock.current < 500) return;
       const delta = event.deltaY;
@@ -206,6 +232,7 @@ export default function PersonalDesignPage() {
     };
 
     const handleKeyDown = (event) => {
+      if (navAnimatingRef.current) return;
       if (event.repeat) return;
       const key = event.key;
       const isNext = key === "ArrowRight" || key === "ArrowDown" || key === "PageDown";
@@ -236,6 +263,7 @@ export default function PersonalDesignPage() {
       });
       window.removeEventListener("wheel", handleWheel);
       window.removeEventListener("keydown", handleKeyDown);
+      performFlipRef.current = null;
     };
   }, [pages, updateZIndexes]);
 
@@ -243,15 +271,38 @@ export default function PersonalDesignPage() {
     (start) => {
       const pageEls = pagesRef.current;
       if (!pageEls.length) return;
+      const performFlip = performFlipRef.current;
+      if (!performFlip) return;
+
       const targetSheet = Math.max(0, Math.floor((start - 1) / 2));
-      pageEls.forEach((page, idx) => {
-        if (idx < targetSheet) {
-          page.classList.add(styles.turned);
+      const firstUnturned = pageEls.findIndex((page) => !page.classList.contains(styles.turned));
+      const currentSheet = firstUnturned === -1 ? pageEls.length : firstUnturned;
+
+      if (targetSheet === currentSheet) return;
+
+      const token = Date.now();
+      navTokenRef.current = token;
+      navAnimatingRef.current = true;
+
+      const run = async () => {
+        if (targetSheet > currentSheet) {
+          for (let i = currentSheet; i < targetSheet; i += 1) {
+            if (navTokenRef.current !== token) return;
+            await performFlip("turn", i);
+          }
         } else {
-          page.classList.remove(styles.turned);
+          for (let i = currentSheet - 1; i >= targetSheet; i -= 1) {
+            if (navTokenRef.current !== token) return;
+            await performFlip("unturn", i);
+          }
+        }
+      };
+
+      run().finally(() => {
+        if (navTokenRef.current === token) {
+          navAnimatingRef.current = false;
         }
       });
-      updateZIndexes();
     },
     [updateZIndexes]
   );

@@ -333,7 +333,7 @@
   height: 100%;
   transform-style: preserve-3d;
   transform-origin: left center;
-  transition: transform 1.5s ease-in-out;
+  transition: transform 0.5s ease-in-out;
   box-shadow: none;
   cursor: pointer;
   overflow: visible;
