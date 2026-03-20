@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture } from "@react-three/drei";
+import { useTexture, Html } from "@react-three/drei";
 import * as THREE from "three";
 import styles from "./RingCarousel.module.css";
 
@@ -27,7 +27,7 @@ const getDisplayItems = (items) => {
 
 const angularDelta = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
-function Card({ index, texture, layout, selected, hovered, onSelect, onHover }) {
+function Card({ index, texture, layout, selected, hovered, selectedMode, title, onSelect, onHover }) {
   const { camera } = useThree();
   const groupRef = useRef(null);
   const materialRef = useRef(null);
@@ -76,11 +76,11 @@ function Card({ index, texture, layout, selected, hovered, onSelect, onHover }) 
       }}
       onPointerOver={(event) => {
         event.stopPropagation();
-        onHover(index);
+        if (!selectedMode) onHover(index);
       }}
       onPointerOut={(event) => {
         event.stopPropagation();
-        onHover(null);
+        if (!selectedMode) onHover(null);
       }}
     >
       <mesh>
@@ -93,8 +93,27 @@ function Card({ index, texture, layout, selected, hovered, onSelect, onHover }) 
           opacity={0.72}
           color={new THREE.Color("#ffffff")}
           side={THREE.DoubleSide}
+          depthWrite={false}
         />
       </mesh>
+      {selectedMode && title && (
+        <Html
+          position={[0, -0.42, 0]}
+          center
+          style={{
+            pointerEvents: 'none',
+            whiteSpace: 'nowrap',
+            fontSize: '11px',
+            letterSpacing: '0.08em',
+            color: `rgba(60, 60, 60, ${layout ? layout.opacity * 0.8 : 0})`,
+            fontFamily: 'inherit',
+            textAlign: 'center',
+            userSelect: 'none',
+          }}
+        >
+          {title}
+        </Html>
+      )}
     </group>
   );
 }
@@ -117,34 +136,36 @@ function CameraRig({ activeLayout, focusActive, radius }) {
 
     focusProgress.current = THREE.MathUtils.damp(focusProgress.current, focusActive ? 1 : 0, 4.8, delta);
 
-    const idleDriftX = pointer.x * 0.14;
-    const idleDriftY = pointer.y * 0.36;
+    // Only apply mouse drift when NOT focused — in focus mode, lock camera perfectly still
+    const idleDriftX = focusActive ? 0 : pointer.x * 0.14;
+    const idleDriftY = focusActive ? 0 : pointer.y * 0.36;
     desiredPosition.current.set(CAMERA_START.x + idleDriftX, CAMERA_START.y + idleDriftY, CAMERA_START.z);
-    desiredLookAt.current.set(LOOK_AT_START.x + pointer.x * 0.18, LOOK_AT_START.y + pointer.y * 0.22, LOOK_AT_START.z);
+    desiredLookAt.current.set(LOOK_AT_START.x + (focusActive ? 0 : pointer.x * 0.18), LOOK_AT_START.y + (focusActive ? 0 : pointer.y * 0.22), LOOK_AT_START.z);
 
     if (activeLayout) {
       const eased = focusProgress.current * focusProgress.current * (3 - 2 * focusProgress.current);
       const focusX = 0;
-      const focusY = GROUP_POSITION.y + activeLayout.position.y + 0.04;
-      const focusCameraZ = radius + 7.2;
+      const focusY = GROUP_POSITION.y + activeLayout.position.y - 0.15;
+      const focusCameraZ = radius + 10.5;
       const focusLookZ = radius - 1.1;
       desiredPosition.current.set(
-        THREE.MathUtils.lerp(CAMERA_START.x + idleDriftX * 0.18, focusX + pointer.x * 0.015, eased),
-        THREE.MathUtils.lerp(CAMERA_START.y + idleDriftY * 0.45, focusY + 0.06, eased),
+        THREE.MathUtils.lerp(CAMERA_START.x, focusX, eased),
+        THREE.MathUtils.lerp(CAMERA_START.y, focusY - 0.35, eased),
         THREE.MathUtils.lerp(CAMERA_START.z, focusCameraZ, eased)
       );
       desiredLookAt.current.set(
-        THREE.MathUtils.lerp(LOOK_AT_START.x + pointer.x * 0.04, focusX + pointer.x * 0.012, eased),
-        THREE.MathUtils.lerp(LOOK_AT_START.y + pointer.y * 0.04, focusY, eased),
+        THREE.MathUtils.lerp(LOOK_AT_START.x, focusX, eased),
+        THREE.MathUtils.lerp(LOOK_AT_START.y, focusY, eased),
         THREE.MathUtils.lerp(LOOK_AT_START.z, focusLookZ, eased)
       );
     }
 
-    activeCamera.position.x = THREE.MathUtils.damp(activeCamera.position.x, desiredPosition.current.x, 5.2, delta);
-    activeCamera.position.y = THREE.MathUtils.damp(activeCamera.position.y, desiredPosition.current.y, 5.2, delta);
-    activeCamera.position.z = THREE.MathUtils.damp(activeCamera.position.z, desiredPosition.current.z, 5.2, delta);
+    const cameraDamping = focusActive ? 7.6 : 5.2;
+    activeCamera.position.x = THREE.MathUtils.damp(activeCamera.position.x, desiredPosition.current.x, cameraDamping, delta);
+    activeCamera.position.y = THREE.MathUtils.damp(activeCamera.position.y, desiredPosition.current.y, cameraDamping, delta);
+    activeCamera.position.z = THREE.MathUtils.damp(activeCamera.position.z, desiredPosition.current.z, cameraDamping, delta);
 
-    lookAtTarget.current.lerp(desiredLookAt.current, 1 - Math.exp(-5.4 * delta));
+    lookAtTarget.current.lerp(desiredLookAt.current, 1 - Math.exp(-(focusActive ? 7.4 : 5.4) * delta));
     activeCamera.lookAt(lookAtTarget.current);
   });
 
@@ -156,6 +177,8 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
   const textures = useTexture(displayItems.map(getThumb));
   const { viewport, pointer } = useThree();
   const groupScale = useRef(new THREE.Vector3(1, 1, 1));
+  const swayRef = useRef(0);
+  const previousSelectedRef = useRef(null);
   const preparedTextures = useMemo(
     () =>
       textures.map((texture) => {
@@ -173,7 +196,7 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
     selectedIndex === null || displayItems.length === 0
       ? null
       : (selectedIndex / displayItems.length) * Math.PI * 2;
-  const sceneRotationTarget = selectedAngle === null ? rotationTarget + pointer.x * 0.14 : 0;
+  const sceneRotationTarget = selectedAngle === null ? rotationTarget : 0;
 
   const layoutMap = useMemo(() => {
     const next = new Map();
@@ -208,15 +231,15 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
         const focusBoost = 1 - focusDistance;
         const backgroundDepth = selected
           ? 0
-          : radius * 0.34 + focusBoost * radius * 0.22 + frontness * radius * 0.06;
+          : radius * 0.1 + focusBoost * radius * 0.08 + frontness * radius * 0.02;
 
         position = new THREE.Vector3(
           Math.sin(relativeAngle) * radius * 0.94,
           (frontness - 0.5) * 0.16 + (selected ? 0.08 : focusBoost * 0.015),
           Math.cos(relativeAngle) * radius - backgroundDepth
         );
-        scale = selected ? 1.14 : 0.42 + frontness * 0.24 - focusBoost * 0.08;
-        opacity = selected ? 1 : 0.04 + frontness * 0.2;
+        scale = selected ? 1.06 : 0.55 + frontness * 0.36;
+        opacity = selected ? 1 : 0.15 + frontness * 0.35;
         tint = selected
           ? new THREE.Color("#ffffff")
           : new THREE.Color(0.64 + frontness * 0.12, 0.64 + frontness * 0.12, 0.67 + frontness * 0.1);
@@ -240,19 +263,31 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    const targetX = selectedIndex === null ? 0.15 + pointer.y * 0.05 : 0.06;
-    const targetScale = selectedIndex === null ? 1 : 1.16;
+    const selectedMode = selectedIndex !== null;
+    const targetX = selectedIndex === null ? 0.15 + pointer.y * 0.05 : 0;
+    const targetScale = selectedMode ? 1.22 : 1;
+    const swayTarget = selectedMode ? 0 : pointer.x * 0.24;
+    swayRef.current = selectedMode
+      ? 0
+      : THREE.MathUtils.damp(swayRef.current, swayTarget, 6.4, delta);
     groupScale.current.setScalar(targetScale);
+
+    if (selectedMode && previousSelectedRef.current !== selectedIndex) {
+      groupRef.current.rotation.y = sceneRotationTarget;
+      groupRef.current.scale.setScalar(targetScale);
+    }
+
     groupRef.current.rotation.y = THREE.MathUtils.damp(
       groupRef.current.rotation.y,
-      sceneRotationTarget,
-      selectedIndex === null ? 4.2 : 3.2,
+      sceneRotationTarget + swayRef.current,
+      selectedMode ? 10.5 : 4.2,
       delta
     );
     groupRef.current.rotation.x = THREE.MathUtils.damp(groupRef.current.rotation.x, targetX, 4.6, delta);
-    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, groupScale.current.x, selectedIndex === null ? 3.4 : 5.8, delta);
-    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, groupScale.current.y, selectedIndex === null ? 3.4 : 5.8, delta);
-    groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, groupScale.current.z, selectedIndex === null ? 3.4 : 5.8, delta);
+    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, groupScale.current.x, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, groupScale.current.y, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, groupScale.current.z, selectedMode ? 10.5 : 3.4, delta);
+    previousSelectedRef.current = selectedIndex;
   });
 
   return (
@@ -267,6 +302,8 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
             layout={layoutMap.get(index)}
             selected={selectedIndex === index}
             hovered={hoveredIndex === index}
+            selectedMode={selectedIndex !== null}
+            title={item.title}
             onSelect={onSelect}
             onHover={onHover}
           />
@@ -285,6 +322,8 @@ export default function RingCarousel({ items }) {
   const displayItems = useMemo(() => getDisplayItems(items), [items]);
   const hoveredItem = hoveredIndex !== null ? displayItems[hoveredIndex] : null;
   const selectedItem = selectedIndex !== null ? displayItems[selectedIndex] : null;
+  const rotationAtSelectRef = useRef(null);
+  const scrollCooldownRef = useRef(false);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -294,10 +333,24 @@ export default function RingCarousel({ items }) {
     let locked = false;
 
     const handleWheel = (event) => {
-      if (selectedIndex !== null) return;
       event.preventDefault();
-
       const delta = event.deltaY;
+
+      // ── Selected mode: scroll switches to next/prev card ──
+      if (selectedIndex !== null) {
+        if (scrollCooldownRef.current) return; // debounce
+        scrollCooldownRef.current = true;
+        setTimeout(() => { scrollCooldownRef.current = false; }, 350);
+
+        const count = displayItems.length;
+        const step = delta > 0 ? 1 : -1;
+        const nextIndex = (selectedIndex + step + count) % count;
+        setSelectedIndex(nextIndex);
+        setHoveredIndex(nextIndex);
+        return;
+      }
+
+      // ── Normal mode: rotate the ring ──
       setRotationTarget((current) => current - delta * 0.00115);
 
       if (delta > 0) {
@@ -386,6 +439,10 @@ export default function RingCarousel({ items }) {
             onSelect={(index) => {
               setSelectedIndex(index);
               setHoveredIndex(index);
+              setRotationTarget((current) => {
+                rotationAtSelectRef.current = current;
+                return current;
+              });
             }}
           />
         </Canvas>
