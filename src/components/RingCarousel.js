@@ -27,7 +27,7 @@ const getDisplayItems = (items) => {
 
 const angularDelta = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
-function Card({ index, texture, layout, selected, hovered, selectedMode, title, onSelect, onHover }) {
+function Card({ index, texture, angle, radius, selected, hovered, selectedMode, title, onSelect, onHover }) {
   const { camera } = useThree();
   const groupRef = useRef(null);
   const materialRef = useRef(null);
@@ -38,34 +38,78 @@ function Card({ index, texture, layout, selected, hovered, selectedMode, title, 
 
   useFrame((_, delta) => {
     const mesh = groupRef.current;
-    if (!mesh || !layout) return;
+    if (!mesh || !mesh.parent) return;
 
-    targetVector.current.copy(layout.position);
+    // 1. Calculate dynamic real-time frontness based on the parent group's continuous rotation
+    const groupRotY = mesh.parent.rotation.y;
+    const worldAngle = angle + groupRotY;
+    const frontness = (Math.cos(worldAngle) + 1) / 2;
+
+    // 2. Compute targets
+    let tY, tZ, tScale, tOpacity, targetRotY, tTint;
+
+    if (selectedMode) {
+      // Rigid background layout, uniform sizes, no frontness stretching
+      tY = (frontness - 0.5) * 0.16 + (selected ? 0.08 : 0.015);
+      
+      const popOut = selected ? radius * 0.25 : 0;
+      targetVector.current.set(
+        Math.sin(angle) * (radius + popOut),
+        tY,
+        Math.cos(angle) * (radius + popOut)
+      );
+      
+      tScale = selected ? 1.06 : 0.5;
+      tOpacity = selected ? 1 : 0.15;
+      tTint = selected ? new THREE.Color("#ffffff") : new THREE.Color(0.7, 0.7, 0.75);
+    } else {
+      // Dynamic overview layout, front cards bloom and scale up
+      tY = (frontness - 0.5) * 0.18;
+      targetVector.current.set(Math.sin(angle) * radius, tY, Math.cos(angle) * radius);
+      
+      tScale = 0.76 + frontness * 0.82;
+      tOpacity = 0.36 + frontness * 0.46;
+      tTint = new THREE.Color(1, 1, 1);
+    }
+    
+    const hoverBoost = hovered && !selected ? 1.04 : 1;
+    tScale *= hoverBoost;
+    targetScale.current.setScalar(tScale);
+
+    // 3. Apply easing
     mesh.position.x = THREE.MathUtils.damp(mesh.position.x, targetVector.current.x, 6.8, delta);
     mesh.position.y = THREE.MathUtils.damp(mesh.position.y, targetVector.current.y, 6.8, delta);
     mesh.position.z = THREE.MathUtils.damp(mesh.position.z, targetVector.current.z, 6.8, delta);
 
-    if (layout.faceCamera && mesh.parent) {
-      mesh.parent.getWorldQuaternion(parentQuaternion.current);
-      desiredQuaternion.current.copy(parentQuaternion.current).invert().multiply(camera.quaternion);
-      mesh.quaternion.slerp(desiredQuaternion.current, 1 - Math.exp(-8.5 * delta));
-    } else {
-      mesh.rotation.x = THREE.MathUtils.damp(mesh.rotation.x, layout.rotation.x, 7, delta);
-      mesh.rotation.y = THREE.MathUtils.damp(mesh.rotation.y, layout.rotation.y, 7, delta);
-      mesh.rotation.z = THREE.MathUtils.damp(mesh.rotation.z, layout.rotation.z, 7, delta);
-    }
-
-    const hoverScale = hovered && !selected ? 1.04 : 1;
-    targetScale.current.setScalar(layout.scale * hoverScale);
     mesh.scale.x = THREE.MathUtils.damp(mesh.scale.x, targetScale.current.x, 8, delta);
     mesh.scale.y = THREE.MathUtils.damp(mesh.scale.y, targetScale.current.y, 8, delta);
     mesh.scale.z = THREE.MathUtils.damp(mesh.scale.z, targetScale.current.z, 8, delta);
 
     if (materialRef.current) {
-      materialRef.current.opacity = THREE.MathUtils.damp(materialRef.current.opacity, layout.opacity, 8.4, delta);
-      materialRef.current.color.lerp(layout.tint, 1 - Math.exp(-7 * delta));
+      materialRef.current.opacity = THREE.MathUtils.damp(materialRef.current.opacity, tOpacity, 8.4, delta);
+      materialRef.current.color.lerp(tTint, 1 - Math.exp(-7 * delta));
+    }
+
+    // 4. Rotation
+    if (selected && mesh.parent) {
+      mesh.parent.getWorldQuaternion(parentQuaternion.current);
+      desiredQuaternion.current.copy(parentQuaternion.current).invert().multiply(camera.quaternion);
+      mesh.quaternion.slerp(desiredQuaternion.current, 1 - Math.exp(-8.5 * delta));
+    } else {
+      targetRotY = angle + Math.PI / 2;
+      mesh.rotation.x = THREE.MathUtils.damp(mesh.rotation.x, 0, 7, delta);
+      mesh.rotation.y = THREE.MathUtils.damp(mesh.rotation.y, targetRotY, 7, delta);
+      mesh.rotation.z = THREE.MathUtils.damp(mesh.rotation.z, 0, 7, delta);
     }
   });
+
+  // Calculate the native aspect ratio of the loaded image so it never stretches
+  const aspect = texture?.image && texture.image.width && texture.image.height
+    ? texture.image.width / texture.image.height
+    : 1.06 / 0.66;
+  
+  const cardWidth = 0.68 * aspect;
+  const cardHeight = 0.68;
 
   return (
     <group
@@ -84,7 +128,7 @@ function Card({ index, texture, layout, selected, hovered, selectedMode, title, 
       }}
     >
       <mesh>
-        <planeGeometry args={[1.06, 0.66]} />
+        <planeGeometry args={[cardWidth, cardHeight]} />
         <meshBasicMaterial
           ref={materialRef}
           map={texture}
@@ -105,7 +149,7 @@ function Card({ index, texture, layout, selected, hovered, selectedMode, title, 
             whiteSpace: 'nowrap',
             fontSize: '11px',
             letterSpacing: '0.08em',
-            color: `rgba(60, 60, 60, ${layout ? layout.opacity * 0.8 : 0})`,
+            color: `rgba(60, 60, 60, ${selected ? 0.8 : 0.15})`,
             fontFamily: 'inherit',
             textAlign: 'center',
             userSelect: 'none',
@@ -118,7 +162,7 @@ function Card({ index, texture, layout, selected, hovered, selectedMode, title, 
   );
 }
 
-function CameraRig({ activeLayout, focusActive, radius }) {
+function CameraRig({ focusActive, radius }) {
   const { camera, pointer } = useThree();
   const cameraRef = useRef(camera);
   const lookAtTarget = useRef(LOOK_AT_START.clone());
@@ -142,11 +186,11 @@ function CameraRig({ activeLayout, focusActive, radius }) {
     desiredPosition.current.set(CAMERA_START.x + idleDriftX, CAMERA_START.y + idleDriftY, CAMERA_START.z);
     desiredLookAt.current.set(LOOK_AT_START.x + (focusActive ? 0 : pointer.x * 0.18), LOOK_AT_START.y + (focusActive ? 0 : pointer.y * 0.22), LOOK_AT_START.z);
 
-    if (activeLayout) {
+    if (focusProgress.current > 0.001) {
       const eased = focusProgress.current * focusProgress.current * (3 - 2 * focusProgress.current);
       const focusX = 0;
-      const focusY = GROUP_POSITION.y + activeLayout.position.y - 0.15;
-      const focusCameraZ = radius + 8;
+      const focusY = GROUP_POSITION.y - 0.15;
+      const focusCameraZ = radius + 9.5;
       const focusLookZ = radius - 1.1;
       desiredPosition.current.set(
         THREE.MathUtils.lerp(CAMERA_START.x, focusX, eased),
@@ -192,97 +236,34 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
   );
 
   const radius = Math.min(viewport.width, viewport.height) * 0.66;
+  const count = displayItems.length;
   const selectedAngle =
-    selectedIndex === null || displayItems.length === 0
+    selectedIndex === null || count === 0
       ? null
-      : (selectedIndex / displayItems.length) * Math.PI * 2;
-  const sceneRotationTarget = selectedAngle === null ? rotationTarget : 0;
+      : (selectedIndex / count) * Math.PI * 2;
+  const sceneRotationTarget = selectedAngle === null ? rotationTarget : -selectedAngle;
 
-  const layoutMap = useMemo(() => {
-    const next = new Map();
-    const count = displayItems.length;
-
-    displayItems.forEach((_, index) => {
-      const angle = (index / count) * Math.PI * 2;
-      const selected = index === selectedIndex;
-      let position;
-      let scale;
-      let opacity;
-      let tint;
-      let rotation;
-
-      if (selectedAngle === null) {
-        const phase = angle + sceneRotationTarget;
-        const frontness = (Math.cos(phase) + 1) / 2;
-
-        position = new THREE.Vector3(
-          Math.sin(angle) * radius,
-          (frontness - 0.5) * 0.18,
-          Math.cos(angle) * radius
-        );
-        scale = 0.76 + frontness * 0.82;
-        opacity = 0.36 + frontness * 0.46;
-        tint = new THREE.Color(1, 1, 1);
-        rotation = new THREE.Euler(0, angle + Math.PI / 2, 0);
-      } else {
-        const relativeAngle = angularDelta(angle, selectedAngle);
-        const frontness = (Math.cos(relativeAngle) + 1) / 2;
-        const focusDistance = Math.abs(relativeAngle) / Math.PI;
-        const focusBoost = 1 - focusDistance;
-        // Flat Z-offset: every unselected card sits at the exact same depth behind the selected card.
-        // This guarantees ZERO depth shuffling when scrolling through cards.
-        // In selected mode, all background cards are locked to STRICT UNIFORM VALUES.
-        // No frontness multipliers! This brutally prevents the cards from squishing/contracting
-        // or re-arranging their depth as the ring spins during mouse-wheel scroll.
-        const backgroundDepth = selected ? 0 : radius * 0.3;
-
-        position = new THREE.Vector3(
-          Math.sin(relativeAngle) * radius,  // Pure circle (was 0.94 ellipse)
-          (frontness - 0.5) * 0.16 + (selected ? 0.08 : 0.015), // No focusBoost variable jumps
-          Math.cos(relativeAngle) * radius - backgroundDepth
-        );
-        scale = selected ? 1.06 : 0.5; // Uniform background scale
-        opacity = selected ? 1 : 0.15; // Uniform background opacity
-        tint = selected
-          ? new THREE.Color("#ffffff")
-          : new THREE.Color(0.7, 0.7, 0.75); // Uniform tint
-        rotation = new THREE.Euler(0, relativeAngle + Math.PI / 2, 0);
-      }
-
-      next.set(index, {
-        position,
-        rotation,
-        scale,
-        opacity,
-        faceCamera: selected,
-        tint,
-      });
-    });
-
-    return next;
-  }, [displayItems, radius, sceneRotationTarget, selectedAngle, selectedIndex]);
-
-  const activeLayout = selectedIndex === null ? null : layoutMap.get(selectedIndex);
+  const activeLayoutY = selectedIndex !== null ? 0 : 0; // The rigid focus Y math was already flattened
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
     const selectedMode = selectedIndex !== null;
     const targetX = selectedIndex === null ? 0.15 + pointer.y * 0.05 : 0;
     const targetScale = selectedMode ? 1.22 : 1;
-    const swayTarget = selectedMode ? 0 : pointer.x * 0.24;
+    const swayTarget = selectedMode ? 0 : pointer.x * 2.4;
     swayRef.current = selectedMode
       ? 0
       : THREE.MathUtils.damp(swayRef.current, swayTarget, 6.4, delta);
     groupScale.current.setScalar(targetScale);
 
-    if (selectedMode && previousSelectedRef.current !== selectedIndex) {
-      groupRef.current.rotation.y = sceneRotationTarget;
-      groupRef.current.scale.setScalar(targetScale);
-    }
+    // Shortest angular path math prevents brutal 360-spins across array boundaries (e.g., photo 41 -> photo 0)
+    let diff = sceneRotationTarget - groupRef.current.rotation.y;
+    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+    const targetGroupY = groupRef.current.rotation.y + diff;
 
     groupRef.current.rotation.y = THREE.MathUtils.damp(
       groupRef.current.rotation.y,
-      sceneRotationTarget + swayRef.current,
+      targetGroupY + swayRef.current,
       selectedMode ? 10.5 : 4.2,
       delta
     );
@@ -295,14 +276,15 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
 
   return (
     <>
-      <CameraRig activeLayout={activeLayout} focusActive={selectedIndex !== null} radius={radius} />
+      <CameraRig focusActive={selectedIndex !== null} radius={radius} />
       <group ref={groupRef} position={GROUP_POSITION.toArray()}>
         {displayItems.map((item, index) => (
           <Card
             key={`${item.id}-${index}`}
             index={index}
             texture={preparedTextures[index]}
-            layout={layoutMap.get(index)}
+            angle={(index / count) * Math.PI * 2}
+            radius={radius}
             selected={selectedIndex === index}
             hovered={hoveredIndex === index}
             selectedMode={selectedIndex !== null}
@@ -354,7 +336,7 @@ export default function RingCarousel({ items }) {
       }
 
       // ── Normal mode: rotate the ring ──
-      setRotationTarget((current) => current - delta * 0.00115);
+      setRotationTarget((current) => current - delta * 0.0035);
 
       if (delta > 0) {
         downMomentum += delta;
