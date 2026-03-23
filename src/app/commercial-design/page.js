@@ -64,8 +64,10 @@ export default function CommercialDesignPage() {
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.bookContainer}>
-        {/* Center Spine Shadow */}
-        <div className={styles.spineOverlay} />
+        {/* Center Spine Shadow Container */}
+        <div className={styles.spineOverlayContainer}>
+          <div className={styles.spineOverlay} />
+        </div>
         
         {/* Left Sticky Navigation */}
         <aside className={styles.sidebar}>
@@ -96,7 +98,7 @@ export default function CommercialDesignPage() {
         <section id="all" className={styles.spread}>
           <div className={styles.leftPage}>
           </div>
-          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+          <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
             <img src={img1} alt="Project 1" className={`${styles.containedImg} ${styles.shadowedImg}`} />
             <div className={styles.caption}>Sir Grayson Perry CBE RA</div>
           </div>
@@ -104,10 +106,10 @@ export default function CommercialDesignPage() {
 
         {/* Spread 2: Double Images */}
         <section id="sites-in-use" className={styles.spread}>
-          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+          <div className={`${styles.leftPage} ${styles.flexCenter} ${styles.flushRight}`}>
             <img src={img2} alt="Project 2 Left" className={styles.containedImg} />
           </div>
-          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+          <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
              <img src={img3} alt="Project 2 Right" className={styles.containedImg} />
           </div>
         </section>
@@ -135,7 +137,7 @@ export default function CommercialDesignPage() {
 
         {/* Spread 4: Full Bleed Left Image (Matching second screenshot, Le Fool Collective) */}
         <section id="style" className={styles.spread}>
-          <div className={`${styles.leftPage} ${styles.fullBleed}`}>
+          <div className={`${styles.leftPage} ${styles.fullBleed} ${styles.flushRight}`}>
              <img src={img5} alt="Project 5" className={styles.fullBleedImg} />
              <div style={{ position: 'absolute', bottom: '2rem', left: '2rem', fontSize: '0.65rem', color: '#fff' }}>
                 Le Fool Collective<br/>@le_fool_club
@@ -155,24 +157,24 @@ export default function CommercialDesignPage() {
               </p>
             </div>
           </div>
-          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+          <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
             <img src={img1} alt="Project Arch" className={styles.containedImg} />
           </div>
         </section>
         
         {/* Spread 6: Art placeholder */}
         <section id="art" className={styles.spread}>
-          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+          <div className={`${styles.leftPage} ${styles.flexCenter} ${styles.flushRight}`}>
             <img src={img2} alt="Project Art" className={`${styles.containedImg} ${styles.shadowedImg}`} />
           </div>
-          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+          <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
              <img src={img3} alt="Project Art Right" className={`${styles.containedImg} ${styles.shadowedImg}`} />
           </div>
         </section>
 
         {/* Spread 7: Photo placeholder */}
         <section id="photo" className={styles.spread}>
-          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+          <div className={`${styles.leftPage} ${styles.flexCenter} ${styles.flushRight}`}>
             <img src={img4} alt="Project Photo" className={styles.containedImg} />
           </div>
           <div className={styles.rightPage}>
@@ -182,7 +184,7 @@ export default function CommercialDesignPage() {
         {/* Spread 8: Shops placeholder */}
         <section id="shops" className={styles.spread}>
           <div className={styles.leftPage}></div>
-          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+          <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
             <img src={img5} alt="Project Shop" className={`${styles.containedImg} ${styles.shadowedImg}`} />
             <div className={styles.caption}>Retail Concepts</div>
           </div>

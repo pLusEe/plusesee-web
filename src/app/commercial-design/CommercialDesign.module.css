@@ -15,19 +15,28 @@
   flex-direction: column;
 }
 
-/* Center crease/spine overlay */
-.spineOverlay {
-  position: fixed;
+/* Center crease/spine overlay - Pure CSS gradient for natural book shadow */
+.spineOverlayContainer {
+  position: absolute;
   top: 0;
   bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 48px;
-  background: url('/crease-multiply.png') center center / 100% 100% no-repeat;
-  opacity: 0.6;
-  mix-blend-mode: multiply;
+  left: 0;
+  right: 0;
   pointer-events: none;
   z-index: 50;
+}
+
+.spineOverlay {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  width: 100%;
+  /* Natural book crease: symmetric darkening, softest falloff, centered */
+  background-image: url('/crease-multiply2.png');
+  background-size: 11.336vh 100vh;
+  background-position: center center;
+  background-repeat: no-repeat;
+  mix-blend-mode: multiply;
 }
 
 /* Sidebar navigation */
@@ -106,8 +115,10 @@
 
 /* Pages */
 .leftPage, .rightPage {
-  flex: 1;
-  width: 50%;
+  flex: 0 0 50%;
+  max-width: 50%;
+  min-width: 0;
+  box-sizing: border-box;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -123,6 +134,22 @@
 }
 
 /* Layout variants */
+.flushRight {
+  padding-right: 0 !important;
+}
+
+.flushRight img {
+  object-position: right center !important;
+}
+
+.flushLeft {
+  padding-left: 0 !important;
+}
+
+.flushLeft img {
+  object-position: left center !important;
+}
+
 .flexCenter {
   align-items: center;
   justify-content: center;
