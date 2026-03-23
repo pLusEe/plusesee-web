@@ -1,0 +1,42 @@
+.loader {
+  position: fixed;
+  inset: 0;
+  background-color: #ffffff;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s cubic-bezier(0.7, 0, 0.3, 1);
+  opacity: 1;
+}
+
+.fadeOut {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.textContainer {
+  font-family: var(--font-sans, 'Inter', sans-serif);
+  font-size: 1.5rem;
+  letter-spacing: -0.04em;
+  font-weight: 900;
+  color: #000;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+}
+
+/* Blinking cursor */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background-color: #111;
+  animation: blink 1s step-end infinite;
+  margin-left: 6px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

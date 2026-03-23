@@ -1,173 +1,204 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState, useEffect } from "react";
 import styles from "./CommercialDesign.module.css";
+import Image from "next/image";
+import portfolio from "../../data/portfolio.json";
 
-const projects = [
-  {
-    id: "01",
-    title: "Radiance",
-    brand: "plusesee",
-    categories: ["commercial design", "visual system", "spatial direction"],
-    collaborators: "Marton Urban / Zalan Adorjan / Olav Niels",
-    year: "2026",
-    exhibited:
-      "2026: internal concept presentation / 2026: commercial prototype release",
-    description:
-      "Radiance is a commercial design study built as a spatial image system. The project turns atmosphere into a product language through light, surface, scale, and a sequence of cinematic frames. This page borrows the archive-like layout from your reference: one quiet text field, one dominant visual field, and one compact strip of navigable supporting images.",
-    credit: "visual direction generated for layout testing",
-    slides: [
-      { id: "01", name: "Blue chamber", palette: "blue", accent: "#7ea6ff" },
-      { id: "02", name: "Red chamber", palette: "red", accent: "#ff7a5f" },
-      { id: "03", name: "Blue disk", palette: "disk", accent: "#8da8ff" },
-      { id: "04", name: "Light basin", palette: "basin", accent: "#c8dbff" },
-      { id: "05", name: "Thermal glow", palette: "heat", accent: "#ff8a4e" },
-    ],
-    defaultIndex: 2,
-  },
-  {
-    id: "02",
-    title: "Noctilucent",
-    brand: "plusesee",
-    categories: ["commercial design", "installation identity", "light object"],
-    collaborators: "Ari Feld / Nian Studio / plusesee",
-    year: "2025",
-    exhibited: "2025: art fair preview / 2025: client proposal package",
-    description:
-      "Noctilucent shifts the page into a warmer, more atmospheric register. The same interface system is reused so the page feels coherent, but the visual sequence changes tone, suggesting a second client world instead of a repetition of the first.",
-    credit: "image system generated for commercial layout testing",
-    slides: [
-      { id: "01", name: "Signal red", palette: "ember", accent: "#ff6b5a" },
-      { id: "02", name: "Core flare", palette: "flare", accent: "#ffae66" },
-      { id: "03", name: "Shadow vessel", palette: "void", accent: "#8f7dff" },
-      { id: "04", name: "Amber field", palette: "amber", accent: "#ffbc66" },
-      { id: "05", name: "Echo bloom", palette: "bloom", accent: "#ff8f80" },
-    ],
-    defaultIndex: 1,
-  },
-];
-
-function VisualFrame({ slide, large = false, active = false, onClick }) {
-  return (
-    <button
-      type="button"
-      className={`${styles.visualFrame} ${large ? styles.visualFrameLarge : ""} ${
-        active ? styles.visualFrameActive : ""
-      }`}
-      onClick={onClick}
-      style={{ "--accent": slide.accent }}
-      aria-label={slide.name}
-    >
-      <div className={`${styles.visualSurface} ${styles[`palette${slide.palette}`]}`}>
-        <div className={styles.glowLayer} />
-        <div className={styles.ringLayer} />
-        <div className={styles.grainLayer} />
-      </div>
-    </button>
-  );
-}
-
-function ProjectSection({ project }) {
-  const [activeIndex, setActiveIndex] = useState(project.defaultIndex || 0);
-  const activeSlide = project.slides[activeIndex];
-  const pageDisplay = useMemo(
-    () =>
-      `${String(activeIndex + 1).padStart(2, "0")} / ${String(project.slides.length).padStart(
-        2,
-        "0"
-      )}`,
-    [activeIndex, project.slides.length]
-  );
-
-  return (
-    <section className={styles.projectSection}>
-      <div className={styles.layout}>
-        <div className={styles.infoPanel}>
-          <header className={styles.headerRow}>
-            <div className={styles.brandBlock}>
-              <div className={styles.brandName}>{project.brand}</div>
-              <div className={styles.brandMark}>PE</div>
-            </div>
-            <div className={styles.categoryBlock}>
-              {project.categories.map((item) => (
-                <div key={item}>{item}</div>
-              ))}
-            </div>
-          </header>
-
-          <div className={styles.topMarkers}>
-            <span />
-            <span />
-            <span />
-          </div>
-
-          <div className={styles.infoSpacer} />
-
-          <div className={styles.pageCountRow}>
-            <span>{pageDisplay}</span>
-            <div className={styles.miniMarks}>
-              <span />
-              <span />
-              <span />
-            </div>
-          </div>
-
-          <div className={styles.detailGrid}>
-            <div className={styles.detailLabel}>title</div>
-            <div className={styles.detailValue}>{project.title}</div>
-
-            <div className={styles.detailLabel}>collaborator</div>
-            <div className={styles.detailValue}>{project.collaborators}</div>
-
-            <div className={styles.detailLabel}>year</div>
-            <div className={styles.detailValue}>{project.year}</div>
-
-            <div className={styles.detailLabel}>exhibited</div>
-            <div className={styles.detailValue}>{project.exhibited}</div>
-
-            <div className={styles.detailLabel}>description</div>
-            <div className={styles.detailValue}>{project.description}</div>
-          </div>
-
-          <footer className={styles.footerRow}>
-            <div className={styles.footerMark}>PE</div>
-            <div className={styles.footerCredit}>{project.credit}</div>
-          </footer>
-        </div>
-
-        <div className={styles.mainVisualColumn}>
-          <VisualFrame slide={activeSlide} large />
-        </div>
-
-        <aside className={styles.thumbRail}>
-          <div className={styles.railTabs}>
-            <span className={styles.tabActive}>work</span>
-            <span>lab</span>
-            <span>info</span>
-          </div>
-
-          <div className={styles.thumbList}>
-            {project.slides.map((slide, index) => (
-              <VisualFrame
-                key={slide.id}
-                slide={slide}
-                active={index === activeIndex}
-                onClick={() => setActiveIndex(index)}
-              />
-            ))}
-          </div>
-        </aside>
-      </div>
-    </section>
-  );
-}
+const getThumb = (item) => {
+  if (item?.thumbUrl) return item.thumbUrl;
+  if ((item?.mediaType || "image") === "image" && item?.mediaUrl) return item.mediaUrl;
+  if (item?.imageUrl) return item.imageUrl;
+  return "/placeholder1.jpg";
+};
 
 export default function CommercialDesignPage() {
+  const [activeSection, setActiveSection] = useState("all");
+  
+  const safeItems = Array.isArray(portfolio) && portfolio.length > 0 ? portfolio : Array(10).fill({ title: "Placeholder" });
+  
+  // Use images from portfolio.json for the layout demo
+  const img1 = getThumb(safeItems[0]);
+  const img2 = getThumb(safeItems[1] || safeItems[0]);
+  const img3 = getThumb(safeItems[2] || safeItems[0]);
+  const img4 = getThumb(safeItems[3] || safeItems[0]);
+  const img5 = getThumb(safeItems[4] || safeItems[0]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: "-40% 0px -40% 0px" } 
+    );
+    
+    const spreads = document.querySelectorAll(`.${styles.spread}`);
+    spreads.forEach((section) => observer.observe(section));
+    
+    return () => observer.disconnect();
+  }, []);
+
+  const handleNavClick = (e, id) => {
+    e.preventDefault();
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  const navItems = [
+    { id: "all", label: "All" },
+    { id: "sites-in-use", label: "Sites In Use" },
+    { id: "graphic-design", label: "Graphic Design" },
+    { id: "style", label: "Style" },
+    { id: "arch-design", label: "Arch. & Design" },
+    { id: "art", label: "Art" },
+    { id: "photo", label: "Photo" },
+    { id: "shops", label: "Shops" }
+  ];
+
   return (
-    <div className={styles.page}>
-      {projects.map((project) => (
-        <ProjectSection key={project.id} project={project} />
-      ))}
+    <div className={styles.pageWrapper}>
+      <div className={styles.bookContainer}>
+        {/* Center Spine Shadow */}
+        <div className={styles.spineOverlay} />
+        
+        {/* Left Sticky Navigation */}
+        <aside className={styles.sidebar}>
+          <div className={styles.navGroup}>
+            <div className={styles.navTitle}>User Work</div>
+            <ul className={styles.navList}>
+              {navItems.map(item => (
+                <li key={item.id} className={styles.navItem}>
+                  <a 
+                    href={`#${item.id}`} 
+                    className={`${styles.navLink} ${activeSection === item.id ? styles.navLinkActive : ''}`}
+                    onClick={(e) => handleNavClick(e, item.id)}
+                  >
+                    {item.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <a href="#extra" className={styles.navExtra}>
+              Extra Material <span>↓</span>
+            </a>
+          </div>
+        </aside>
+
+        {/* Scrollable Content Spreads */}
+        
+        {/* Spread 1: Intro (Right Image matching the Sir Grayson Perry screenshot) */}
+        <section id="all" className={styles.spread}>
+          <div className={styles.leftPage}>
+          </div>
+          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+            <img src={img1} alt="Project 1" className={`${styles.containedImg} ${styles.shadowedImg}`} />
+            <div className={styles.caption}>Sir Grayson Perry CBE RA</div>
+          </div>
+        </section>
+
+        {/* Spread 2: Double Images */}
+        <section id="sites-in-use" className={styles.spread}>
+          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+            <img src={img2} alt="Project 2 Left" className={styles.containedImg} />
+          </div>
+          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+             <img src={img3} alt="Project 2 Right" className={styles.containedImg} />
+          </div>
+        </section>
+
+        {/* Spread 3: Left Text, Right Image */}
+        <section id="graphic-design" className={styles.spread}>
+          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+            <div className={styles.textBlock}>
+              <h2 className={styles.textTitle}>Graphic & Print</h2>
+              <p className={styles.textBody}>
+                This editorial layout mimics the structural rhythm of a high-end photography book. The rigid center spine and the generous whitespace allow the imagery to breathe, presenting visual systems with a quiet, confident authority.
+              </p>
+              <p className={styles.textBody}>
+                The typography relies on tight letter-spacing and structural hierarchy, avoiding unnecessary ornaments.
+              </p>
+              <div className={styles.creditBottom}>
+                Photography <strong>Plusesee Studio</strong>
+              </div>
+            </div>
+          </div>
+          <div className={`${styles.rightPage} ${styles.fullBleed}`}>
+             <img src={img4} alt="Project 4" className={styles.fullBleedImg} />
+          </div>
+        </section>
+
+        {/* Spread 4: Full Bleed Left Image (Matching second screenshot, Le Fool Collective) */}
+        <section id="style" className={styles.spread}>
+          <div className={`${styles.leftPage} ${styles.fullBleed}`}>
+             <img src={img5} alt="Project 5" className={styles.fullBleedImg} />
+             <div style={{ position: 'absolute', bottom: '2rem', left: '2rem', fontSize: '0.65rem', color: '#fff' }}>
+                Le Fool Collective<br/>@le_fool_club
+             </div>
+          </div>
+          <div className={styles.rightPage}>
+          </div>
+        </section>
+        
+        {/* Spread 5: Arch & Design placeholder */}
+        <section id="arch-design" className={styles.spread}>
+          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+            <div className={styles.textBlock}>
+              <h2 className={styles.textTitle}>Architecture & Space</h2>
+              <p className={styles.textBody}>
+                A study in spatial relationships and structural harmony.
+              </p>
+            </div>
+          </div>
+          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+            <img src={img1} alt="Project Arch" className={styles.containedImg} />
+          </div>
+        </section>
+        
+        {/* Spread 6: Art placeholder */}
+        <section id="art" className={styles.spread}>
+          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+            <img src={img2} alt="Project Art" className={`${styles.containedImg} ${styles.shadowedImg}`} />
+          </div>
+          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+             <img src={img3} alt="Project Art Right" className={`${styles.containedImg} ${styles.shadowedImg}`} />
+          </div>
+        </section>
+
+        {/* Spread 7: Photo placeholder */}
+        <section id="photo" className={styles.spread}>
+          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+            <img src={img4} alt="Project Photo" className={styles.containedImg} />
+          </div>
+          <div className={styles.rightPage}>
+          </div>
+        </section>
+
+        {/* Spread 8: Shops placeholder */}
+        <section id="shops" className={styles.spread}>
+          <div className={styles.leftPage}></div>
+          <div className={`${styles.rightPage} ${styles.flexCenter}`}>
+            <img src={img5} alt="Project Shop" className={`${styles.containedImg} ${styles.shadowedImg}`} />
+            <div className={styles.caption}>Retail Concepts</div>
+          </div>
+        </section>
+        
+        <section id="extra" className={styles.spread}>
+          <div className={`${styles.leftPage} ${styles.flexCenter}`}>
+            <div className={styles.textBlock}>
+              <h2 className={styles.textTitle}>Extra Material</h2>
+              <p className={styles.textBody}>Additional resources and references.</p>
+            </div>
+          </div>
+          <div className={`${styles.rightPage} ${styles.flexCenter}`}></div>
+        </section>
+
+      </div>
     </div>
   );
 }

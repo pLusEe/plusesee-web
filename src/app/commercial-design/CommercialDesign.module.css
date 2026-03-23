@@ -1,179 +1,218 @@
-.page {
+.pageWrapper {
+  background-color: #ffffff;
   min-height: 100vh;
-  background: #fff;
-  color: #111;
-}
-
-.projectSection {
-  min-height: 100vh;
-  display: flex;
-  align-items: stretch;
-}
-
-.layout {
-  display: grid;
-  grid-template-columns: minmax(320px, 34vw) minmax(0, 1fr) 112px;
-  width: 100%;
-  min-height: 100vh;
-}
-
-.infoPanel {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.headerRow,
-.footerRow,
-.pageCountRow,
-.railTabs {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.brandBlock,
-.categoryBlock,
-.detailGrid,
-.thumbList,
-.topMarkers,
-.miniMarks {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.brandName,
-.brandMark,
-.footerMark,
-.tabActive,
-.detailLabel {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.categoryBlock,
-.detailValue,
-.footerCredit,
-.railTabs {
-  font-size: 0.88rem;
-  line-height: 1.5;
-}
-
-.topMarkers,
-.miniMarks {
-  grid-auto-flow: column;
-  justify-content: start;
-}
-
-.topMarkers span,
-.miniMarks span {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #111;
-  opacity: 0.6;
-}
-
-.infoSpacer {
-  flex: 1;
-}
-
-.detailGrid {
-  grid-template-columns: 120px 1fr;
-  margin-top: 2rem;
-}
-
-.mainVisualColumn {
-  background: #f5f5f5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.thumbRail {
-  border-left: 1px solid rgba(17, 17, 17, 0.08);
-  padding: 1rem 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.thumbList {
-  grid-auto-rows: min-content;
-}
-
-.visualFrame {
-  display: block;
-  width: 100%;
-  border: 0;
   padding: 0;
-  background: transparent;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #111;
+  position: relative;
+}
+
+.bookContainer {
+  position: relative;
+  width: 100%;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Center crease/spine overlay */
+.spineOverlay {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 48px;
+  background: url('/crease-multiply.png') center center / 100% 100% no-repeat;
+  opacity: 0.6;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* Sidebar navigation */
+.sidebar {
+  position: fixed;
+  top: 6rem;
+  left: 3.5rem;
+  z-index: 80;
+  width: 140px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+.navGroup {
+  margin-bottom: 2rem;
+}
+
+.navTitle {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: #000;
+}
+
+.navList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.navItem {
+  margin-bottom: 0.25rem;
+}
+
+.navLink {
+  text-decoration: none;
+  color: #777;
+  transition: color 0.2s;
   cursor: pointer;
 }
 
-.visualFrameLarge {
-  max-width: 100%;
+.navLink:hover {
+  color: #000;
 }
 
-.visualFrameActive {
-  outline: 1px solid rgba(17, 17, 17, 0.2);
+.navLinkActive {
+  color: #000;
+  font-weight: 600;
 }
 
-.visualSurface {
-  position: relative;
+.navExtra {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  color: #777;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.navExtra:hover {
+  color: #000;
+}
+
+/* Editorial Spreads */
+.spread {
+  display: flex;
+  flex-direction: row;
   width: 100%;
-  aspect-ratio: 4 / 5;
-  overflow: hidden;
-  border-radius: 2px;
+  min-height: 100vh;
+  position: relative;
+  border-bottom: 1px solid rgba(0,0,0,0.03); /* subtle separator between long sections if needed, or none */
 }
 
-.glowLayer,
-.ringLayer,
-.grainLayer {
-  position: absolute;
-  inset: 0;
+/* Pages */
+.leftPage, .rightPage {
+  flex: 1;
+  width: 50%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
 }
 
-.glowLayer {
-  background: radial-gradient(circle at 50% 50%, var(--accent, #999), transparent 58%);
-  mix-blend-mode: screen;
+/* General padding for content ensuring sidebar space on the left */
+.leftPage {
+  padding: 6rem 4rem 6rem calc(160px + 2rem);
 }
 
-.ringLayer {
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  inset: 16%;
+.rightPage {
+  padding: 6rem 4rem 6rem 4rem;
 }
 
-.grainLayer {
-  background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(0,0,0,0.12));
+/* Layout variants */
+.flexCenter {
+  align-items: center;
+  justify-content: center;
 }
 
-.paletteblue,
-.palettedisk,
-.palettebasin,
-.palettevoid {
-  background: linear-gradient(180deg, #0d1636, #070b16 72%, #02040b);
+.fullBleed {
+  padding: 0;
 }
 
-.palettered,
-.paletteheat,
-.paletteember,
-.paletteflare,
-.paletteamber,
-.palettebloom {
-  background: linear-gradient(180deg, #3c0f11, #160507 72%, #050203);
+.fullBleedImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-@media (max-width: 960px) {
-  .layout {
-    grid-template-columns: 1fr;
+.containedImg {
+  width: 100%;
+  height: auto;
+  max-height: 80vh;
+  object-fit: contain;
+}
+
+.shadowedImg {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.caption {
+  margin-top: 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-style: italic;
+  text-align: center;
+  color: #a89458; /* Gold tone matching the reference */
+  letter-spacing: 0.04em;
+}
+
+.creditBottom {
+  margin-top: auto;
+  padding-top: 2rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: #666;
+}
+
+.creditBottom strong {
+  display: block;
+  font-weight: 600;
+  color: #111;
+}
+
+/* Typography Blocks */
+.textBlock {
+  max-width: 440px;
+  margin: auto;
+}
+
+.textTitle {
+  font-size: 2.2rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  margin-bottom: 1.5rem;
+}
+
+.textBody {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: #444;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+  .pageWrapper {
+    padding: 0;
   }
-
-  .thumbRail {
-    border-left: 0;
-    border-top: 1px solid rgba(17, 17, 17, 0.08);
+  .sidebar {
+    display: none;
+  }
+  .spineOverlay {
+    display: none;
+  }
+  .spread {
+    flex-direction: column;
+    min-height: auto;
+  }
+  .leftPage, .rightPage {
+    width: 100%;
+    padding: 3rem 2rem !important;
+  }
+  .fullBleed {
+    height: 60vh;
   }
 }

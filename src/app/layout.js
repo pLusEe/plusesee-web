@@ -1,5 +1,6 @@
 import "./globals.css";
 import CustomCursor from "../components/CustomCursor";
+import LoadingScreen from "../components/LoadingScreen";
 
 export const metadata = {
   title: "plusesee.me | Portfolio",
@@ -10,6 +11,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body suppressHydrationWarning>
+        <LoadingScreen />
         <CustomCursor />
         <div className="layout-container">
           <header className="header">
@@ -17,8 +19,8 @@ export default function RootLayout({ children }) {
               <a href="/" className="logo">plusesee.me</a>
             </div>
             <nav className="nav">
+              <a href="/commercial-design">commercial design</a>
               <a href="/personal-design">personal design</a>
-              <a href="#">commercial design</a>
               <div className="nav-item nav-dropdown">
                 <a href="#" className="nav-link">other works</a>
                 <div className="dropdown-menu">
