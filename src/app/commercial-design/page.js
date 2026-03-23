@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import styles from "./CommercialDesign.module.css";
-import Image from "next/image";
 import portfolio from "../../data/portfolio.json";
 
 const getThumb = (item) => {
@@ -65,8 +64,13 @@ export default function CommercialDesignPage() {
     <div className={styles.pageWrapper}>
       <div className={styles.bookContainer}>
         {/* Center Spine Shadow Container */}
-        <div className={styles.spineOverlayContainer}>
-          <div className={styles.spineOverlay} />
+        <div className={styles.spineOverlayContainer} aria-hidden="true">
+          <img
+            src="/crease-multiply2.png"
+            alt=""
+            className={styles.spineMultiply}
+            draggable="false"
+          />
         </div>
         
         {/* Left Sticky Navigation */}

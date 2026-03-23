@@ -5,6 +5,8 @@
   font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   color: #111;
   position: relative;
+  --page-gutter: 4rem;
+  --sidebar-safe: calc(160px + 2rem);
 }
 
 .bookContainer {
@@ -15,28 +17,23 @@
   flex-direction: column;
 }
 
-/* Center crease/spine overlay - Pure CSS gradient for natural book shadow */
+/* Center crease overlay, matching the fixed PNG treatment used in the reference */
 .spineOverlayContainer {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: fixed;
+  inset: 0;
   pointer-events: none;
   z-index: 50;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  mix-blend-mode: multiply;
 }
 
-.spineOverlay {
-  position: sticky;
-  top: 0;
+.spineMultiply {
+  display: block;
   height: 100vh;
-  width: 100%;
-  /* Natural book crease: symmetric darkening, softest falloff, centered */
-  background-image: url('/crease-multiply2.png');
-  background-size: 11.336vh 100vh;
-  background-position: center center;
-  background-repeat: no-repeat;
-  mix-blend-mode: multiply;
+  width: auto;
+  max-width: none;
 }
 
 /* Sidebar navigation */
@@ -110,6 +107,7 @@
   width: 100%;
   min-height: 100vh;
   position: relative;
+  left: calc((100vw - 100%) / 2);
   border-bottom: 1px solid rgba(0,0,0,0.03); /* subtle separator between long sections if needed, or none */
 }
 
@@ -122,19 +120,58 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: rgba(255, 255, 255, 0.68);
+}
+
+.leftPage::before,
+.rightPage::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.leftPage::before {
+  background:
+    linear-gradient(
+      270deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.12) 1%,
+      rgba(255, 255, 255, 0.32) 3%,
+      rgba(255, 255, 255, 0.1) 4.7%,
+      rgba(255, 255, 255, 0.03) 6%,
+      rgba(255, 255, 255, 0) 6.1%
+    );
+}
+
+.rightPage::before {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.12) 1%,
+      rgba(255, 255, 255, 0.32) 3%,
+      rgba(255, 255, 255, 0.1) 4.7%,
+      rgba(255, 255, 255, 0.03) 6%,
+      rgba(255, 255, 255, 0) 6.1%
+    );
 }
 
 /* General padding for content ensuring sidebar space on the left */
 .leftPage {
-  padding: 6rem 4rem 6rem calc(160px + 2rem);
+  padding: 6rem var(--page-gutter) 6rem var(--sidebar-safe);
 }
 
 .rightPage {
-  padding: 6rem 4rem 6rem 4rem;
+  padding: 6rem var(--sidebar-safe) 6rem var(--page-gutter);
 }
 
 /* Layout variants */
 .flushRight {
+  padding-left: 0 !important;
   padding-right: 0 !important;
 }
 
@@ -142,12 +179,31 @@
   object-position: right center !important;
 }
 
+.flushRight .containedImg {
+  margin-left: auto;
+  margin-right: 0;
+  display: block;
+  align-self: flex-end;
+  width: calc(100% - var(--sidebar-safe));
+  max-width: calc(100% - var(--sidebar-safe));
+}
+
 .flushLeft {
   padding-left: 0 !important;
+  padding-right: 0 !important;
 }
 
 .flushLeft img {
   object-position: left center !important;
+}
+
+.flushLeft .containedImg {
+  margin-left: 0;
+  margin-right: auto;
+  display: block;
+  align-self: flex-start;
+  width: calc(100% - var(--sidebar-safe));
+  max-width: calc(100% - var(--sidebar-safe));
 }
 
 .flexCenter {
@@ -228,12 +284,13 @@
   .sidebar {
     display: none;
   }
-  .spineOverlay {
+  .spineMultiply {
     display: none;
   }
   .spread {
     flex-direction: column;
     min-height: auto;
+    left: 0;
   }
   .leftPage, .rightPage {
     width: 100%;
@@ -241,5 +298,11 @@
   }
   .fullBleed {
     height: 60vh;
+  }
+
+  .flushRight .containedImg,
+  .flushLeft .containedImg {
+    width: 100%;
+    max-width: 100%;
   }
 }
