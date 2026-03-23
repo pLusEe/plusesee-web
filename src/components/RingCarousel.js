@@ -231,19 +231,22 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
         const focusBoost = 1 - focusDistance;
         // Flat Z-offset: every unselected card sits at the exact same depth behind the selected card.
         // This guarantees ZERO depth shuffling when scrolling through cards.
+        // In selected mode, all background cards are locked to STRICT UNIFORM VALUES.
+        // No frontness multipliers! This brutally prevents the cards from squishing/contracting
+        // or re-arranging their depth as the ring spins during mouse-wheel scroll.
         const backgroundDepth = selected ? 0 : radius * 0.3;
 
         position = new THREE.Vector3(
-          Math.sin(relativeAngle) * radius * 0.94,
-          (frontness - 0.5) * 0.16 + (selected ? 0.08 : focusBoost * 0.015),
+          Math.sin(relativeAngle) * radius,  // Pure circle (was 0.94 ellipse)
+          (frontness - 0.5) * 0.16 + (selected ? 0.08 : 0.015), // No focusBoost variable jumps
           Math.cos(relativeAngle) * radius - backgroundDepth
         );
-        scale = selected ? 1.06 : 0.4 + frontness * 0.32;
-        opacity = selected ? 1 : 0.1 + frontness * 0.4;
+        scale = selected ? 1.06 : 0.5; // Uniform background scale
+        opacity = selected ? 1 : 0.15; // Uniform background opacity
         tint = selected
           ? new THREE.Color("#ffffff")
-          : new THREE.Color(0.64 + frontness * 0.12, 0.64 + frontness * 0.12, 0.67 + frontness * 0.1);
-        rotation = new THREE.Euler(-0.01 + focusBoost * 0.025, relativeAngle + Math.PI / 2, focusBoost * 0.016);
+          : new THREE.Color(0.7, 0.7, 0.75); // Uniform tint
+        rotation = new THREE.Euler(0, relativeAngle + Math.PI / 2, 0);
       }
 
       next.set(index, {
