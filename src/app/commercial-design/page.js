@@ -13,6 +13,8 @@ const getThumb = (item) => {
   return FALLBACK_IMAGE;
 };
 
+const isVideoUrl = (url) => /\.(mp4|webm|mov|m4v|ogg)$/i.test(String(url || "").trim());
+
 const toStyleObject = (value) => (value && typeof value === "object" && !Array.isArray(value) ? value : {});
 
 const resolveImage = (safeItems, section, key, fallbackIndex) => {
@@ -99,6 +101,24 @@ export default function CommercialDesignPage() {
     if (element) element.scrollIntoView({ behavior: "smooth" });
   };
 
+  const renderMedia = (url, alt, className, style) => {
+    if (isVideoUrl(url)) {
+      return (
+        <video
+          src={url}
+          className={className}
+          style={style}
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="metadata"
+        />
+      );
+    }
+    return <img src={url} alt={alt} className={className} style={style} />;
+  };
+
   return (
     <div className={styles.pageWrapper}>
       <div className={styles.bookContainer}>
@@ -136,31 +156,31 @@ export default function CommercialDesignPage() {
         <section id="all" className={styles.spread}>
           <div className={styles.leftPage}></div>
           <div className={`${styles.rightPage} ${styles.fullBleed}`}>
-            <img
-              src={allHero}
-              alt="Project 1"
-              className={`${styles.fullBleedImg} ${styles.heroRightImg}`}
-              style={toStyleObject(sections?.all?.rightImageStyle)}
-            />
+            {renderMedia(
+              allHero,
+              "Project 1",
+              `${styles.fullBleedImg} ${styles.heroRightImg}`,
+              toStyleObject(sections?.all?.rightImageStyle)
+            )}
           </div>
         </section>
 
         <section id="sites-in-use" className={styles.spread}>
           <div className={`${styles.leftPage} ${styles.flexCenter} ${styles.flushRight}`}>
-            <img
-              src={sitesLeft}
-              alt="Project 2 Left"
-              className={styles.containedImg}
-              style={toStyleObject(sections?.sitesInUse?.leftImageStyle)}
-            />
+            {renderMedia(
+              sitesLeft,
+              "Project 2 Left",
+              styles.containedImg,
+              toStyleObject(sections?.sitesInUse?.leftImageStyle)
+            )}
           </div>
           <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
-            <img
-              src={sitesRight}
-              alt="Project 2 Right"
-              className={styles.containedImg}
-              style={toStyleObject(sections?.sitesInUse?.rightImageStyle)}
-            />
+            {renderMedia(
+              sitesRight,
+              "Project 2 Right",
+              styles.containedImg,
+              toStyleObject(sections?.sitesInUse?.rightImageStyle)
+            )}
           </div>
         </section>
 
@@ -176,23 +196,23 @@ export default function CommercialDesignPage() {
             </div>
           </div>
           <div className={`${styles.rightPage} ${styles.fullBleed}`}>
-            <img
-              src={graphicRight}
-              alt="Project 4"
-              className={styles.fullBleedImg}
-              style={toStyleObject(sections?.graphicDesign?.rightImageStyle)}
-            />
+            {renderMedia(
+              graphicRight,
+              "Project 4",
+              styles.fullBleedImg,
+              toStyleObject(sections?.graphicDesign?.rightImageStyle)
+            )}
           </div>
         </section>
 
         <section id="style" className={styles.spread}>
           <div className={`${styles.leftPage} ${styles.fullBleed} ${styles.flushRight}`}>
-            <img
-              src={styleLeft}
-              alt="Project 5"
-              className={styles.fullBleedImg}
-              style={toStyleObject(sections?.style?.leftImageStyle)}
-            />
+            {renderMedia(
+              styleLeft,
+              "Project 5",
+              styles.fullBleedImg,
+              toStyleObject(sections?.style?.leftImageStyle)
+            )}
             {sections?.style?.overlayText ? (
               <div style={{ position: "absolute", ...toStyleObject(sections?.style?.overlayStyle) }}>
                 {String(sections.style.overlayText)
@@ -207,12 +227,12 @@ export default function CommercialDesignPage() {
         </section>
 
         <section id="across-spread" className={`${styles.spread} ${styles.acrossSpread}`}>
-          <img
-            src={acrossImage}
-            alt="Across spread project"
-            className={styles.acrossSpreadImg}
-            style={toStyleObject(sections?.acrossSpread?.imageStyle)}
-          />
+          {renderMedia(
+            acrossImage,
+            "Across spread project",
+            styles.acrossSpreadImg,
+            toStyleObject(sections?.acrossSpread?.imageStyle)
+          )}
           <div className={styles.leftPage}></div>
           <div className={styles.rightPage}></div>
         </section>
@@ -225,42 +245,42 @@ export default function CommercialDesignPage() {
             </div>
           </div>
           <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
-            <img
-              src={archRight}
-              alt="Project Arch"
-              className={styles.containedImg}
-              style={toStyleObject(sections?.archDesign?.rightImageStyle)}
-            />
+            {renderMedia(
+              archRight,
+              "Project Arch",
+              styles.containedImg,
+              toStyleObject(sections?.archDesign?.rightImageStyle)
+            )}
           </div>
         </section>
 
         <section id="art" className={styles.spread}>
           <div className={`${styles.leftPage} ${styles.flexCenter} ${styles.flushRight}`}>
-            <img
-              src={artLeft}
-              alt="Project Art"
-              className={`${styles.containedImg} ${styles.shadowedImg}`}
-              style={toStyleObject(sections?.art?.leftImageStyle)}
-            />
+            {renderMedia(
+              artLeft,
+              "Project Art",
+              `${styles.containedImg} ${styles.shadowedImg}`,
+              toStyleObject(sections?.art?.leftImageStyle)
+            )}
           </div>
           <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
-            <img
-              src={artRight}
-              alt="Project Art Right"
-              className={`${styles.containedImg} ${styles.shadowedImg}`}
-              style={toStyleObject(sections?.art?.rightImageStyle)}
-            />
+            {renderMedia(
+              artRight,
+              "Project Art Right",
+              `${styles.containedImg} ${styles.shadowedImg}`,
+              toStyleObject(sections?.art?.rightImageStyle)
+            )}
           </div>
         </section>
 
         <section id="photo" className={styles.spread}>
           <div className={`${styles.leftPage} ${styles.flexCenter} ${styles.flushRight}`}>
-            <img
-              src={photoLeft}
-              alt="Project Photo"
-              className={styles.containedImg}
-              style={toStyleObject(sections?.photo?.leftImageStyle)}
-            />
+            {renderMedia(
+              photoLeft,
+              "Project Photo",
+              styles.containedImg,
+              toStyleObject(sections?.photo?.leftImageStyle)
+            )}
           </div>
           <div className={styles.rightPage}></div>
         </section>
@@ -268,12 +288,12 @@ export default function CommercialDesignPage() {
         <section id="shops" className={styles.spread}>
           <div className={styles.leftPage}></div>
           <div className={`${styles.rightPage} ${styles.flexCenter} ${styles.flushLeft}`}>
-            <img
-              src={shopsRight}
-              alt="Project Shop"
-              className={`${styles.containedImg} ${styles.shadowedImg}`}
-              style={toStyleObject(sections?.shops?.rightImageStyle)}
-            />
+            {renderMedia(
+              shopsRight,
+              "Project Shop",
+              `${styles.containedImg} ${styles.shadowedImg}`,
+              toStyleObject(sections?.shops?.rightImageStyle)
+            )}
             {sections?.shops?.caption ? <div className={styles.caption}>{sections.shops.caption}</div> : null}
           </div>
         </section>

@@ -18,6 +18,24 @@ const getThumb = (item) => {
   return "/media/images/placeholder1.jpg";
 };
 
+const TAG_LABELS = {
+  home: "2.1 首页圆环",
+  commercial: "2.2 商业设计",
+  personalLibrary: "2.3 个人库",
+  personalBook: "2.3.1 个人设计 2019-2024",
+  bio: "2.4 Bio",
+};
+
+const resolveCategoryLabel = (item) => {
+  if (Array.isArray(item?.categories) && item.categories.length > 0) {
+    const labels = item.categories
+      .map((tag) => TAG_LABELS[tag] || String(tag || ""))
+      .filter(Boolean);
+    if (labels.length > 0) return labels.join(" / ");
+  }
+  return item?.category || "work";
+};
+
 const getDisplayItems = (items) => {
   if (!items.length) return [];
   let next = [...items];
@@ -438,7 +456,7 @@ export default function RingCarousel({ items }) {
           <button className={styles.backButton} type="button" onClick={closeExpanded}>
             Exit View
           </button>
-          {selectedItem.category && <p className={styles.category}>{selectedItem.category}</p>}
+          <p className={styles.category}>{resolveCategoryLabel(selectedItem)}</p>
           <h2 className={styles.title}>{selectedItem.title}</h2>
           {selectedItem.description && <p className={styles.description}>{selectedItem.description}</p>}
         </div>
@@ -446,7 +464,7 @@ export default function RingCarousel({ items }) {
 
       {!selectedItem && hoveredItem && (
         <div className={styles.hoverLabel}>
-          <span className={styles.hoverCategory}>{hoveredItem.category || "work"}</span>
+          <span className={styles.hoverCategory}>{resolveCategoryLabel(hoveredItem)}</span>
           <span className={styles.hoverTitle}>{hoveredItem.title}</span>
         </div>
       )}

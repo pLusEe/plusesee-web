@@ -1,7 +1,8 @@
 {
   "home": {
     "ring": {
-      "categoryFilter": ""
+      "categoryFilter": "",
+      "selectedWorkIds": []
     },
     "ai": {
       "systemPrompt": "You are a helpful AI assistant on the portfolio website of plusesee, a designer and creative. Always reply in Chinese (Simplified). Keep responses concise, friendly, and creative.",
@@ -11,16 +12,46 @@
   },
   "commercialDesign": {
     "navItems": [
-      { "id": "all", "label": "All" },
-      { "id": "sites-in-use", "label": "Sites In Use" },
-      { "id": "graphic-design", "label": "Graphic Design" },
-      { "id": "style", "label": "Style" },
-      { "id": "across-spread", "label": "Across Spread" },
-      { "id": "arch-design", "label": "Arch. & Design" },
-      { "id": "art", "label": "Art" },
-      { "id": "photo", "label": "Photo" },
-      { "id": "shops", "label": "Shops" },
-      { "id": "extra", "label": "Extra" }
+      {
+        "id": "all",
+        "label": "All"
+      },
+      {
+        "id": "sites-in-use",
+        "label": "Sites In Use"
+      },
+      {
+        "id": "graphic-design",
+        "label": "Graphic Design"
+      },
+      {
+        "id": "style",
+        "label": "Style"
+      },
+      {
+        "id": "across-spread",
+        "label": "Across Spread"
+      },
+      {
+        "id": "arch-design",
+        "label": "Arch. & Design"
+      },
+      {
+        "id": "art",
+        "label": "Art"
+      },
+      {
+        "id": "photo",
+        "label": "Photo"
+      },
+      {
+        "id": "shops",
+        "label": "Shops"
+      },
+      {
+        "id": "extra",
+        "label": "Extra"
+      }
     ],
     "spineImageUrl": "/ui/crease-multiply2.png",
     "sections": {
@@ -104,30 +135,86 @@
         "size": "DIGITAL ARCHIVE",
         "year": "2019-2024",
         "href": "/personal-design/2019-2024",
-        "coverUrl": "/media/images/youshenyouren4.jpg",
+        "coverUrl": "/media/images/wandering-souls-02.jpg",
         "openLabel": "OPEN PORTFOLIO"
       },
       "fallingImages": [
-        { "src": "/media/images/portfolio1.jpg", "rotate": 270, "width": 1279, "height": 1865 },
-        { "src": "/media/images/portfolio2.jpg", "rotate": 0, "width": 1279, "height": 1993 },
-        { "src": "/media/images/portfolio3.jpg", "rotate": 270, "width": 1279, "height": 1706 },
-        { "src": "/media/images/portfolio4.jpg", "rotate": 0, "width": 1279, "height": 1706 }
+        {
+          "src": "/media/images/portfolio1.jpg",
+          "rotate": 270,
+          "width": 1279,
+          "height": 1865
+        },
+        {
+          "src": "/media/images/portfolio2.jpg",
+          "rotate": 0,
+          "width": 1279,
+          "height": 1993
+        },
+        {
+          "src": "/media/images/portfolio3.jpg",
+          "rotate": 270,
+          "width": 1279,
+          "height": 1706
+        },
+        {
+          "src": "/media/images/portfolio4.jpg",
+          "rotate": 0,
+          "width": 1279,
+          "height": 1706
+        }
       ],
-      "rightNote": ["welcome to the", "archive"],
+      "rightNote": [
+        "welcome to the",
+        "archive"
+      ],
       "leftCopyright": "© 2026 plusesee.me"
     },
     "book2019": {
       "pages": [],
       "projects": [
-        { "start": 1, "end": 4, "name": "Wandering Souls" },
-        { "start": 5, "end": 6, "name": "Wind" },
-        { "start": 7, "end": 10, "name": "Kodak Charmera" },
-        { "start": 11, "end": 18, "name": "Series 04" },
-        { "start": 19, "end": 26, "name": "Series 05" },
-        { "start": 27, "end": 34, "name": "Series 06" },
-        { "start": 35, "end": 42, "name": "Series 07" },
-        { "start": 43, "end": 50, "name": "Series 08" }
-      ]
+        {
+          "start": 1,
+          "end": 4,
+          "name": "Wandering Souls"
+        },
+        {
+          "start": 5,
+          "end": 6,
+          "name": "Wind"
+        },
+        {
+          "start": 7,
+          "end": 10,
+          "name": "Kodak Charmera"
+        },
+        {
+          "start": 11,
+          "end": 18,
+          "name": "Series 04"
+        },
+        {
+          "start": 19,
+          "end": 26,
+          "name": "Series 05"
+        },
+        {
+          "start": 27,
+          "end": 34,
+          "name": "Series 06"
+        },
+        {
+          "start": 35,
+          "end": 42,
+          "name": "Series 07"
+        },
+        {
+          "start": 43,
+          "end": 50,
+          "name": "Series 08"
+        }
+      ],
+      "pageWorkIds": []
     }
   },
   "bio": {
@@ -136,9 +223,21 @@
     "title": "Multidisciplinary designer shaping visual rhythm across image, text, and space.",
     "lead": "I build identities and visual worlds with editorial clarity, emotional precision, and strong structural balance.",
     "meta": [
-      { "label": "Base", "value": "China" },
-      { "label": "Focus", "value": "Brand / Editorial / Digital" },
-      { "label": "Contact", "value": "hello@plusesee.me", "href": "mailto:hello@plusesee.me" }
+      {
+        "label": "Base",
+        "value": "China",
+        "href": ""
+      },
+      {
+        "label": "Focus",
+        "value": "Brand / Editorial / Digital",
+        "href": ""
+      },
+      {
+        "label": "Contact",
+        "value": "hello@plusesee.me",
+        "href": "mailto:hello@plusesee.me"
+      }
     ],
     "aboutParagraphs": [
       "My work combines system thinking with a tactile sense of composition. I am interested in contrast, pacing, and the way typography and imagery create a narrative voice.",

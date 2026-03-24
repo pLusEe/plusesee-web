@@ -4,6 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "../PersonalDesign.module.css";
 import defaultSiteContent from "../../../data/site-content.json";
 
+const LEGACY_CATEGORY_TO_TAGS = {
+  "home ai / ring": ["home"],
+  home: ["home"],
+  ring: ["home"],
+  "commercial design": ["commercial"],
+  commercial: ["commercial"],
+  "personal design": ["personalLibrary", "personalBook"],
+  personal: ["personalLibrary", "personalBook"],
+  bio: ["bio"],
+};
+
 const getThumb = (item) => {
   if (item?.thumbUrl) return item.thumbUrl;
   if ((item?.mediaType || "image") === "image" && item?.mediaUrl) return item.mediaUrl;
@@ -13,6 +24,23 @@ const getThumb = (item) => {
 
 const toSafeUrl = (url) => encodeURI(url || "");
 const DEFAULT_BOOK_CONFIG = defaultSiteContent.personalDesign.book2019;
+
+const normalizeTags = (rawCategories, rawCategory) => {
+  const source = [];
+  if (Array.isArray(rawCategories)) source.push(...rawCategories);
+  if (typeof rawCategories === "string") source.push(...rawCategories.split(","));
+  if (typeof rawCategory === "string" && rawCategory.trim()) source.push(rawCategory.trim());
+  return Array.from(
+    new Set(
+      source.flatMap((value) => {
+        const text = String(value || "").trim();
+        if (!text) return [];
+        if (["home", "commercial", "personalLibrary", "personalBook", "bio"].includes(text)) return [text];
+        return LEGACY_CATEGORY_TO_TAGS[text.toLowerCase()] || [];
+      })
+    )
+  );
+};
 
 export default function PersonalDesignPage() {
   const normalFlipMs = 600;
@@ -36,6 +64,7 @@ export default function PersonalDesignPage() {
             ...DEFAULT_BOOK_CONFIG,
             ...nextBook,
             pages: Array.isArray(nextBook.pages) ? nextBook.pages : DEFAULT_BOOK_CONFIG.pages,
+            pageWorkIds: Array.isArray(nextBook.pageWorkIds) ? nextBook.pageWorkIds : DEFAULT_BOOK_CONFIG.pageWorkIds,
             projects: Array.isArray(nextBook.projects) ? nextBook.projects : DEFAULT_BOOK_CONFIG.projects,
           });
         }
@@ -43,14 +72,49 @@ export default function PersonalDesignPage() {
       .catch(() => {});
   }, []);
 
-  const personalItems = useMemo(
-    () => items.filter((item) => item.category === "personal design"),
-    [items]
-  );
-  const pageItems = personalItems.length > 0 ? personalItems : items;
+  const personalItems = useMemo(() => {
+    return items.filter((item) => {
+      const tags = normalizeTags(item?.categories, item?.category);
+      if (tags.includes("personalBook")) return true;
+      if (tags.includes("personalLibrary")) return true;
+      return String(item?.category || "").toLowerCase() === "personal design";
+    });
+  }, [items]);
+
+  const orderedByConfigIds = useMemo(() => {
+    const ids = Array.isArray(bookConfig?.pageWorkIds) ? bookConfig.pageWorkIds.map((id) => String(id)) : [];
+    if (ids.length === 0) return [];
+    const map = new Map(personalItems.map((item) => [String(item?.id), item]));
+    return ids.map((id) => map.get(id)).filter(Boolean);
+  }, [bookConfig, personalItems]);
+
+  const pageItems = orderedByConfigIds.length > 0 ? orderedByConfigIds : personalItems.length > 0 ? personalItems : items;
   const safeItems = pageItems.length > 0 ? pageItems : [{ id: "placeholder", title: "Placeholder" }];
 
   const pages = useMemo(() => {
+    if (orderedByConfigIds.length > 0) {
+      const result = [];
+      for (let i = 0; i < orderedByConfigIds.length; i += 2) {
+        const frontItem = orderedByConfigIds[i];
+        const backItem = orderedByConfigIds[i + 1] || orderedByConfigIds[i];
+        result.push({
+          front: {
+            title: frontItem.title || `Page ${i + 1}`,
+            text: frontItem.description || "",
+            background: toSafeUrl(getThumb(frontItem)),
+            pageNum: i + 1,
+          },
+          back: {
+            title: backItem.title || `Page ${i + 2}`,
+            text: backItem.description || "",
+            background: toSafeUrl(getThumb(backItem)),
+            pageNum: i + 2,
+          },
+        });
+      }
+      return result;
+    }
+
     if (Array.isArray(bookConfig?.pages) && bookConfig.pages.length > 0) {
       return bookConfig.pages.map((page, idx) => ({
         front: {
@@ -90,7 +154,7 @@ export default function PersonalDesignPage() {
       });
     }
     return result;
-  }, [bookConfig, safeItems]);
+  }, [bookConfig, orderedByConfigIds, safeItems]);
 
   const projects = useMemo(() => {
     if (Array.isArray(bookConfig?.projects) && bookConfig.projects.length > 0) {
