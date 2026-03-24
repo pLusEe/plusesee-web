@@ -88,44 +88,29 @@
   overflow: visible;
 }
 
-.previewPinned {
-  overflow: visible;
-}
-
 .coverTrigger {
   position: relative;
   z-index: 2;
 }
 
-.previewRail {
-  --preview-height: clamp(166px, 12.4vw, 230px);
-  --preview-gap: 0.46rem;
+.fallStage {
+  --fall-gap: 0.46rem;
   position: absolute;
-  left: calc(100% + var(--preview-gap));
+  left: calc(100% + var(--fall-gap));
   top: 0.2rem;
-  display: flex;
-  align-items: flex-start;
-  gap: var(--preview-gap);
-  opacity: 0;
-  transform: translateY(8px);
+  width: clamp(520px, 52vw, 940px);
+  height: clamp(230px, 34vh, 390px);
   pointer-events: none;
-  transition: opacity 240ms ease, transform 240ms ease;
+  overflow: hidden;
   z-index: 4;
 }
 
-.coverStage:hover .previewRail,
-.coverStage:focus-within .previewRail,
-.previewPinned .previewRail {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.previewItem {
-  --img-ratio: 0.685;
-  width: calc(var(--preview-height) * var(--img-ratio));
-  height: var(--preview-height);
-  position: relative;
+.fallCard {
+  --card-width: 160px;
+  --card-height: 220px;
+  position: absolute;
+  left: 0;
+  top: 0;
   opacity: 0.96;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
@@ -133,37 +118,41 @@
   padding: 0;
   margin: 0;
   background: transparent;
-  cursor: default;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  pointer-events: auto;
+  will-change: transform;
 }
 
-.previewItemRotated {
-  width: var(--preview-height);
-  height: calc(var(--preview-height) * var(--img-ratio));
+.fallCard:active {
+  cursor: grabbing;
 }
 
-.previewImage {
+.fallImage {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+  pointer-events: none;
 }
 
-.previewItemRotated .previewImage {
+.fallCardRotated .fallImage {
   position: absolute;
   left: 0;
   top: 0;
-  width: calc(var(--preview-height) * var(--img-ratio));
-  height: var(--preview-height);
+  width: var(--card-height);
+  height: var(--card-width);
 }
 
-.previewImageRotate90 {
+.fallImageRotate90 {
   transform-origin: top left;
-  transform: translateX(var(--preview-height)) rotate(90deg);
+  transform: translateX(var(--card-width)) rotate(90deg);
 }
 
-.previewImageRotate270 {
+.fallImageRotate270 {
   transform-origin: top left;
-  transform: translateY(calc(var(--preview-height) * var(--img-ratio))) rotate(-90deg);
+  transform: translateY(var(--card-height)) rotate(-90deg);
 }
 
 .coverLink {
@@ -178,7 +167,13 @@
   aspect-ratio: 5 / 8;
   position: relative;
   overflow: hidden;
-  background: #d9d9d9;
+  background: transparent;
+}
+
+.bookletCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
 .coverImage {
@@ -316,7 +311,7 @@
     --book-width: min(90vw, 250px);
   }
 
-  .previewRail {
+  .fallStage {
     display: none;
   }
 
