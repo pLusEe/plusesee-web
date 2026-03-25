@@ -1,0 +1,586 @@
+/* Book-like physical presence - open spread on dotted grid */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+.bookPage {
+  height: 100vh;
+  background: #ffffff;
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 7.75rem 2rem 3.875rem; /* top padding for fixed header */
+  position: relative;
+  overflow: hidden;
+}
+
+/* Grid hidden - pure white background */
+.gridBg {
+  display: none;
+}
+
+/* Book spread - centered */
+.bookSpread {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 80vw;
+  max-width: 1600px;
+  margin: 0 auto;
+  height: calc(100vh - 11.625rem);
+  min-height: 0;
+  background: #fff;
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.04);
+  perspective: 1600px;
+  --sidebar-width: 280px;
+  --spine-width: 48px;
+  --spine-half: calc(var(--spine-width) / 2);
+  transform: scale(0.85);
+  transform-origin: center center;
+}
+
+/* ─── Left page - fixed functional sidebar ───────────────────── */
+.leftPage {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+  border: 0;
+  border-right: none;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-shadow: none;
+  min-height: 0;
+}
+
+.sidebarInner {
+  padding: 2.5rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.sidebarLogo {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #000;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.sidebarLogo:hover {
+  opacity: 0.7;
+}
+
+.sidebarNav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sidebarLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.sidebarLink {
+  font-size: 0.9rem;
+  color: #000;
+  text-decoration: none;
+  line-height: 1.5;
+}
+
+.sidebarLink:hover {
+  text-decoration: underline;
+}
+
+.sidebarIndex {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.indexLabel {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #666;
+}
+
+.indexItem {
+  font-size: 0.85rem;
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  cursor: pointer;
+  color: #666;
+  text-align: left;
+  font-family: inherit;
+}
+
+.indexItem:hover {
+  color: #000;
+}
+
+.indexActive {
+  color: #000;
+  font-weight: 600;
+}
+
+.sidebarTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #111;
+}
+
+.projectList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.6rem;
+}
+
+.projectItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.projectRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.projectJump {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.projectLabel {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: #666;
+}
+
+.projectName {
+  font-size: 0.95rem;
+  color: #000;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.projectRange {
+  align-self: center;
+  background: none;
+  border: none;
+  padding: 0.1rem 0;
+  font-size: 0.85rem;
+  color: #000;
+  cursor: pointer;
+  letter-spacing: 0.12em;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.projectRange:focus-visible,
+.projectJump:focus-visible {
+  outline: none;
+}
+
+.projectRow {
+  position: relative;
+}
+
+.projectRow::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -0.15rem;
+  width: 35%;
+  height: 1px;
+  background: #000;
+  transform: scaleY(0.5);
+  transform-origin: left bottom;
+  transition: width 0.2s ease, opacity 0.2s ease;
+  opacity: 0.7;
+}
+
+.projectRowActive::after {
+  width: 100%;
+  opacity: 0.7;
+}
+
+/* ─── Book spine - crease image (true alpha PNG) ─── */
+.spine {
+  width: var(--spine-width);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--sidebar-width) - var(--spine-half));
+  overflow: hidden;
+  background: transparent;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.spineImage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: url(/ui/crease-multiply.png) center center / 100% 100% no-repeat;
+  opacity: 0.7;
+  mix-blend-mode: multiply;
+}
+
+/* ─── Right page - floating white paper ──────────────────────── */
+.rightPage {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  border: 0;
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+  z-index: 1;
+  transform-style: preserve-3d;
+  will-change: transform;
+  backface-visibility: hidden;
+  cursor: pointer;
+}
+
+.rightPage::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 16px;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.16) 0%,
+    rgba(0, 0, 0, 0.08) 35%,
+    rgba(0, 0, 0, 0.02) 70%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pagesStage {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  overflow: visible;
+}
+
+.spineSecondary {
+  width: var(--spine-width);
+  left: calc(
+    var(--sidebar-width) + (100% - var(--sidebar-width)) / 2 - var(--spine-half)
+  );
+}
+
+.rightLeaf {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  min-height: 0;
+  z-index: 1;
+  transform-origin: left center;
+  transform-style: preserve-3d;
+  will-change: transform;
+  backface-visibility: hidden;
+  cursor: pointer;
+}
+
+.book {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  perspective: 2400px;
+  overflow: visible;
+}
+
+.page {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform-origin: left center;
+  transition: transform 0.5s ease-in-out;
+  transition-timing-function: cubic-bezier(0.37, 0, 0.63, 1);
+  box-shadow: none;
+  cursor: pointer;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.turned {
+  transform: rotateY(-180deg);
+  box-shadow: none;
+}
+
+.pageActive {
+  pointer-events: auto;
+  box-shadow: none;
+}
+
+.flipping {
+  z-index: 9999 !important;
+}
+
+.front,
+.back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.front {
+  transform: rotateY(0deg);
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
+.pageContent {
+  padding: 1.25rem 1.5rem 3.2rem;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.65),
+    rgba(0, 0, 0, 0)
+  );
+  color: #fff;
+}
+
+.pageTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.pageText {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+.pageNumber {
+  position: absolute;
+  bottom: 1.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: #fff;
+  padding: 0.2rem 0.6rem;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 999px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.pageNumberLeft {
+  left: 1.2rem;
+}
+
+.pageNumberRight {
+  right: 1.2rem;
+}
+
+/* 单页的前后两面，用来实现“右页翻到左侧”的真实翻页 */
+.pageSideFront,
+.pageSideBack {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.pageSideBack {
+  transform: rotateY(180deg);
+}
+
+
+/* Running heads - extreme corners */
+.runningHead {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 2rem 0;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #000;
+}
+
+.folioLeft {
+  order: 1;
+}
+
+.folioRight {
+  order: 2;
+}
+
+/* Paper content - generous leading */
+.paperContent {
+  flex: 1;
+  padding: 1.5rem 2rem 2rem;
+  overflow: hidden;
+  position: relative;
+  perspective: 1400px;
+}
+
+.pageSheet {
+  position: absolute;
+  inset: 1.5rem 2rem 2rem 1.5rem;
+  transform-origin: left center;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+}
+
+/* Gallery grid - tactile, book-like */
+.galleryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.4rem;
+  line-height: 1.65; /* generous leading */
+}
+
+.galleryItem {
+  margin: 0;
+}
+
+.galleryImage {
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.galleryImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.galleryCaption {
+  font-size: 0.95rem;
+  color: #000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.galleryCaption strong {
+  font-weight: 600;
+}
+
+.galleryDesc {
+  font-size: 0.85rem;
+  color: #444;
+  font-weight: 400;
+}
+
+/* Page folio - bottom */
+.pageFolio {
+  padding: 0.75rem 2rem 1rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: #666;
+  border-top: 1px solid #eee;
+}
+
+.folioNum {
+  display: block;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .bookPage {
+    padding: 1rem;
+  }
+
+  .bookSpread {
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    height: calc(100vh - 2rem);
+  }
+
+  .leftPage {
+    width: 100%;
+    border-right: 0;
+    border-bottom: none;
+  }
+
+  .sidebarInner {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+  }
+
+  .sidebarIndex {
+    margin-top: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .spine {
+    width: 100%;
+    height: 24px;
+  }
+
+  .spineSecondary,
+  .rightLeaf {
+    display: none;
+  }
+
+  .spineImage {
+    background-size: 100% 100%;
+  }
+
+  .galleryGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .runningHead,
+  .paperContent,
+  .pageFolio {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}

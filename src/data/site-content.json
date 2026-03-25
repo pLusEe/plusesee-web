@@ -56,12 +56,12 @@
     "spineImageUrl": "/ui/crease-multiply2.png",
     "sections": {
       "all": {
-        "rightImageIndex": 1,
-        "rightImageUrl": "/media/images/wandering-souls-08.jpg",
+        "rightImageIndex": 0,
+        "rightImageUrl": "/media/images/1774436908953-___bn_3x.png",
         "rightImageStyle": {
-          "width": "78%",
-          "height": "100%",
-          "objectPosition": "right center"
+          "width": "48%",
+          "height": "50%",
+          "objectPosition": "center center"
         },
         "layoutType": "focus-right"
       },
@@ -135,11 +135,11 @@
   "personalDesign": {
     "library": {
       "book": {
-        "title": "PERSONAL DESIGN ARCHIVE",
+        "title": "DESIGN ARCHIVE",
         "type": "PERSONAL PORTFOLIO",
         "size": "DIGITAL ARCHIVE",
         "year": "2019-2024",
-        "href": "/personal-design/2019-2024",
+        "href": "/design-archive/2019-2024",
         "coverUrl": "/media/images/wandering-souls-02.jpg",
         "openLabel": "OPEN PORTFOLIO"
       },

@@ -12,6 +12,7 @@ const LEGACY_CATEGORY_TO_TAGS = {
   "commercial design": ["commercial"],
   commercial: ["commercial"],
   "personal design": ["personalLibrary", "personalBook"],
+  "design archive": ["personalLibrary", "personalBook"],
   personal: ["personalLibrary", "personalBook"],
   bio: ["bio"],
 };

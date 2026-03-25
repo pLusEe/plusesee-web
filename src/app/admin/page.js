@@ -43,6 +43,7 @@ const LEGACY_CATEGORY_TO_TAGS = {
   "commercial design": ["commercial"],
   commercial: ["commercial"],
   "personal design": ["personalLibrary", "personalBook"],
+  "design archive": ["personalLibrary", "personalBook"],
   personal: ["personalLibrary", "personalBook"],
   bio: ["bio"],
 };
@@ -50,8 +51,8 @@ const LEGACY_CATEGORY_TO_TAGS = {
 const TAG_TO_LEGACY_CATEGORY = {
   home: "home ai / ring",
   commercial: "commercial design",
-  personalLibrary: "personal design",
-  personalBook: "personal design",
+  personalLibrary: "design archive",
+  personalBook: "design archive",
   bio: "bio",
 };
 

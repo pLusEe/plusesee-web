@@ -39,11 +39,11 @@ export default function RootLayout({ children }) {
                 <NavFlipLabel en="commercial design" zh="商业设计" />
               </Link>
               <Link
-                href="/personal-design"
+                href="/design-archive"
                 className="nav-float"
-                aria-label="personal design / 个人设计"
+                aria-label="design archive / 设计档案"
               >
-                <NavFlipLabel en="personal design" zh="个人设计" />
+                <NavFlipLabel en="design archive" zh="设计档案" />
               </Link>
               <Link href="/bio" className="nav-float" aria-label="bio / 简介">
                 <NavFlipLabel en="bio" zh="简介" />

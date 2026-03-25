@@ -1,0 +1,335 @@
+.page {
+  height: 100vh;
+  overflow: hidden;
+  color: #111;
+}
+
+.main {
+  height: 100%;
+  width: min(1420px, 92vw);
+  margin: 0 auto;
+  box-sizing: border-box;
+  padding: 8rem 0 1.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.books {
+  width: min(1080px, 100%);
+  max-width: 1080px;
+  height: auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  align-content: center;
+  justify-items: center;
+  overflow: visible;
+}
+
+.rightNote {
+  position: fixed;
+  right: 0.9rem;
+  top: 38%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.14rem;
+  text-align: right;
+  text-transform: lowercase;
+  font-size: 0.76rem;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  font-weight: 300;
+  font-family: var(--font-sans);
+  color: #111;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.leftCopyright {
+  position: fixed;
+  left: 0.9rem;
+  bottom: 1rem;
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  font-weight: 300;
+  color: #111;
+  text-transform: lowercase;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.book {
+  --book-width: clamp(260px, 26vw, 340px);
+  width: var(--book-width);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.bookWithStack {
+  overflow: visible;
+}
+
+.bookWithPreview {
+  overflow: visible;
+}
+
+.coverStage {
+  width: 100%;
+  position: relative;
+  overflow: visible;
+}
+
+.coverTrigger {
+  position: relative;
+  z-index: 2;
+}
+
+.fallStage {
+  --fall-gap: 0.46rem;
+  position: absolute;
+  left: calc(100% + var(--fall-gap));
+  top: 0.2rem;
+  width: clamp(520px, 52vw, 940px);
+  height: clamp(230px, 34vh, 390px);
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 4;
+}
+
+.fallCard {
+  --card-width: 160px;
+  --card-height: 220px;
+  position: absolute;
+  left: 0;
+  top: 0;
+  opacity: 0.96;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  pointer-events: auto;
+  will-change: transform;
+}
+
+.fallCard:active {
+  cursor: grabbing;
+}
+
+.fallImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.fallCardRotated .fallImage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--card-height);
+  height: var(--card-width);
+}
+
+.fallImageRotate90 {
+  transform-origin: top left;
+  transform: translateX(var(--card-width)) rotate(90deg);
+}
+
+.fallImageRotate270 {
+  transform-origin: top left;
+  transform: translateY(var(--card-height)) rotate(-90deg);
+}
+
+.coverLink {
+  width: 100%;
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.coverWrap {
+  width: 100%;
+  aspect-ratio: 5 / 8;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+}
+
+.bookletCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.coverImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coverPlaceholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--book-width) * 1.1);
+  aspect-ratio: 11 / 16;
+  background: transparent;
+  border: 0.8px solid rgba(0, 0, 0, 0.28);
+}
+
+.placeholderInner {
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.48);
+  padding: 0.34rem 0.56rem;
+  background: transparent;
+}
+
+.info {
+  width: 100%;
+  margin-top: 0.62rem;
+  padding: 0.1rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.index {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.45rem;
+  color: #444;
+}
+
+.title {
+  font-size: clamp(1rem, 1.7vw, 1.35rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+  margin-bottom: 0.24rem;
+}
+
+.period {
+  font-size: 0.75rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: #444;
+  margin-bottom: 0.55rem;
+}
+
+.label {
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.description {
+  font-size: 0.7rem;
+  line-height: 1.58;
+  text-transform: uppercase;
+  margin-bottom: 0.35rem;
+}
+
+.metaRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.34rem 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metaRow:last-of-type {
+  margin-bottom: 0.12rem;
+}
+
+.openBtn,
+.openDisabled {
+  margin-top: 0.6rem;
+  align-self: flex-end;
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.33rem 0.52rem;
+}
+
+.openBtn {
+  color: #111;
+  text-decoration: none;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.openBtn:hover {
+  background: #111;
+  color: #fff;
+}
+
+.openDisabled {
+  color: #555;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@media (max-width: 980px) {
+  .page {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .main {
+    height: auto;
+    padding: 8rem 0 2rem;
+    display: block;
+  }
+
+  .books {
+    height: auto;
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .book {
+    --book-width: min(90vw, 250px);
+  }
+
+  .fallStage {
+    display: none;
+  }
+
+  .rightNote {
+    display: none;
+  }
+
+  .leftCopyright {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .books {
+    grid-template-columns: 1fr;
+  }
+
+  .book {
+    --book-width: min(92vw, 320px);
+  }
+}
