@@ -914,10 +914,29 @@
   top: 0;
   bottom: 0;
   left: 50%;
-  transform: translateX(-1px);
+  transform: translateX(-0.5px);
   width: 2px;
-  background: linear-gradient(180deg, rgba(17, 17, 17, 0.08), rgba(17, 17, 17, 0.2), rgba(17, 17, 17, 0.08));
+  background: rgba(17, 17, 17, 0.55);
   pointer-events: none;
+  z-index: 140;
+}
+
+.commercialSpineHint::before,
+.commercialSpineHint::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(46, 98, 255, 0.58);
+}
+
+.commercialSpineHint::before {
+  left: -6px;
+}
+
+.commercialSpineHint::after {
+  left: 6px;
 }
 
 .commercialFrameOutline {
@@ -933,12 +952,12 @@
   top: 0;
   bottom: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 139;
 }
 
 .commercialPageZoneLeft {
   left: 0;
-  border-right: 1px dashed rgba(17, 17, 17, 0.12);
+  border-right: 1px dashed rgba(17, 17, 17, 0.4);
 }
 
 .commercialPageZoneRight {

@@ -2459,7 +2459,29 @@ export default function AdminPage() {
                   >
                     <span className={styles.commercialPageZoneLabel}>右页</span>
                   </div>
-                  <div className={styles.commercialSpineHint} style={{ left: `${spineCenter}%` }} aria-hidden="true" />
+                  {[
+                    { offset: 0, width: 2, color: "rgba(255, 50, 50, 0.95)" },
+                    { offset: -8, width: 1, color: "rgba(46, 98, 255, 0.85)" },
+                    { offset: 8, width: 1, color: "rgba(46, 98, 255, 0.85)" },
+                  ].map((guide, guideIndex) => (
+                    <div
+                      key={`spine-guide-${guideIndex}`}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        bottom: 0,
+                        left: `calc(${spineCenter}% + ${guide.offset}px)`,
+                        width: `${guide.width}px`,
+                        transform: "translateX(-50%)",
+                        background: guide.color,
+                        boxShadow: `0 0 6px ${guide.color}`,
+                        pointerEvents: "none",
+                        zIndex: 1200,
+                        mixBlendMode: "normal",
+                      }}
+                      aria-hidden="true"
+                    />
+                  ))}
                   <div className={styles.commercialFrameOutline} aria-hidden="true" />
                   {commercialSnapGuides.x !== null ? (
                     <div
