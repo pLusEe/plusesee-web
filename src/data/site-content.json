@@ -228,16 +228,16 @@
                 "id": "element-mn6cdfxu-5pra8",
                 "type": "media",
                 "page": "both",
-                "x": -14.803076125223193,
-                "y": 8.503999999999998,
-                "width": 147.52141684665227,
-                "height": 147.5413333333333,
+                "x": 0,
+                "y": 0,
+                "width": 91.91719049676027,
+                "height": 91.9296,
                 "opacity": 100,
                 "zIndex": 8,
                 "fit": "contain",
                 "mediaUrl": "/media/images/commercial-design/feishu-pt1/1774436908953-___bn_3x.png",
                 "mediaType": "image",
-                "mediaScale": 260,
+                "mediaScale": 162,
                 "mediaAspect": 1.7775377969762418,
                 "mediaBase": 31.92,
                 "text": "",
@@ -282,7 +282,7 @@
                 "id": "element-mn6dffse-ggb3y",
                 "type": "media",
                 "page": "both",
-                "x": 0,
+                "x": 23.082869146525677,
                 "y": 0,
                 "width": 26.917130853474323,
                 "height": 90.625,
@@ -413,50 +413,95 @@
     },
     "book2019": {
       "pages": [],
-      "projects": [
-        {
-          "start": 1,
-          "end": 4,
-          "name": "Wandering Souls"
-        },
-        {
-          "start": 5,
-          "end": 6,
-          "name": "Wind"
-        },
-        {
-          "start": 7,
-          "end": 10,
-          "name": "Kodak Charmera"
-        },
-        {
-          "start": 11,
-          "end": 18,
-          "name": "Series 04"
-        },
-        {
-          "start": 19,
-          "end": 26,
-          "name": "Series 05"
-        },
-        {
-          "start": 27,
-          "end": 34,
-          "name": "Series 06"
-        },
-        {
-          "start": 35,
-          "end": 42,
-          "name": "Series 07"
-        },
-        {
-          "start": 43,
-          "end": 50,
-          "name": "Series 08"
-        }
-      ],
+      "projects": [],
       "pageWorkIds": []
-    }
+    },
+    "books": [
+      {
+        "id": "book-1",
+        "label": "DESIGN ARCHIVE",
+        "book": {
+          "title": "DESIGN ARCHIVE",
+          "type": "PERSONAL PORTFOLIO",
+          "size": "DIGITAL ARCHIVE",
+          "year": "2019-2024",
+          "href": "/design-archive/2019-2024",
+          "coverUrl": "/media/images/wandering-souls-02.jpg",
+          "openLabel": "OPEN PORTFOLIO"
+        },
+        "fallingImages": [
+          {
+            "src": "/media/images/portfolio1.jpg",
+            "rotate": 270,
+            "width": 1279,
+            "height": 1865
+          },
+          {
+            "src": "/media/images/portfolio2.jpg",
+            "rotate": 0,
+            "width": 1279,
+            "height": 1993
+          },
+          {
+            "src": "/media/images/portfolio3.jpg",
+            "rotate": 270,
+            "width": 1279,
+            "height": 1706
+          },
+          {
+            "src": "/media/images/portfolio4.jpg",
+            "rotate": 0,
+            "width": 1279,
+            "height": 1706
+          }
+        ],
+        "pages": [],
+        "pageWorkIds": [],
+        "projects": []
+      },
+      {
+        "id": "book-2",
+        "label": "第 2 本书",
+        "book": {
+          "title": "BOOK 2",
+          "type": "PERSONAL PORTFOLIO",
+          "size": "DIGITAL ARCHIVE",
+          "year": "",
+          "href": "/design-archive/2019-2024",
+          "coverUrl": "",
+          "openLabel": "OPEN PORTFOLIO"
+        },
+        "fallingImages": [
+          {
+            "src": "/media/images/portfolio1.jpg",
+            "rotate": 270,
+            "width": 1279,
+            "height": 1865
+          },
+          {
+            "src": "/media/images/portfolio2.jpg",
+            "rotate": 0,
+            "width": 1279,
+            "height": 1993
+          },
+          {
+            "src": "/media/images/portfolio3.jpg",
+            "rotate": 270,
+            "width": 1279,
+            "height": 1706
+          },
+          {
+            "src": "/media/images/portfolio4.jpg",
+            "rotate": 0,
+            "width": 1279,
+            "height": 1706
+          }
+        ],
+        "pages": [],
+        "pageWorkIds": [],
+        "projects": []
+      }
+    ]
   },
   "bio": {
     "photoUrl": "",

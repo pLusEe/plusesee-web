@@ -115,6 +115,19 @@
   gap: 10px;
 }
 
+.archivePanel {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.archivePanelMain {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 .card {
   border: 1px solid #e2e6ed;
   background: #fff;
@@ -535,6 +548,51 @@
   padding: 6px;
 }
 
+.archiveCompactList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.archiveCompactRow {
+  display: grid;
+  grid-template-columns: 66px 42px minmax(120px, 180px) minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid #e2e7ef;
+  background: #fafbfd;
+  padding: 5px;
+}
+
+.archiveCompactRowActive {
+  border-color: #111;
+  background: #fff;
+}
+
+.archivePageSelectBtn {
+  border: 1px solid #d8e0ec;
+  background: #fff;
+  font-size: 11px;
+  padding: 6px 4px;
+  cursor: pointer;
+}
+
+.archiveMiniPreview {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border: 1px solid #d7deea;
+  background: #fff;
+}
+
+.archiveRangeHint {
+  font-size: 11px;
+  color: #5e6779;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .fixedCell {
   font-size: 12px;
   color: #535b6d;
@@ -859,6 +917,11 @@
   text-overflow: ellipsis;
 }
 
+.archiveBookMeta {
+  font-size: 10px;
+  color: #6d778b;
+}
+
 .pageTreeBtnActive {
   border-color: #111;
   background: #111;
@@ -866,6 +929,10 @@
 }
 
 .pageTreeBtnActive span {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.pageTreeBtnActive .archiveBookMeta {
   color: rgba(255, 255, 255, 0.76);
 }
 
@@ -1170,6 +1237,7 @@
 
 @media (max-width: 1260px) {
   .workLayout,
+  .archivePanel,
   .commercialEditorLayout,
   .commercialStudio,
   .commercialBottomGrid,
@@ -1210,6 +1278,7 @@
   .pickerTopRow,
   .gridTwo,
   .tableRow,
+  .archiveCompactRow,
   .spreadRow,
   .compactStyleRow,
   .layoutPresetGrid {

@@ -10,15 +10,15 @@ const FALLBACK_IMAGE = "/media/images/placeholder1.jpg";
 const WORK_TAGS = [
   { id: "home", label: "2.1 首页圆环" },
   { id: "commercial", label: "2.2 商业设计" },
-  { id: "personalLibrary", label: "2.3 个人设计册子（含 2.3.1）" },
+  { id: "personalLibrary", label: "2.3 设计档案" },
   { id: "bio", label: "2.4 Bio" },
 ];
 
 const TAG_LABELS = {
   home: "2.1 首页圆环",
   commercial: "2.2 商业设计",
-  personalLibrary: "2.3 个人设计册子",
-  personalBook: "2.3 个人设计册子",
+  personalLibrary: "2.3 设计档案",
+  personalBook: "2.3 设计档案",
   bio: "2.4 Bio",
 };
 
@@ -26,7 +26,7 @@ const PANEL_ITEMS = [
   { key: "works", label: "1. 作品管理", hint: "左侧上传，右侧管理已上传作品" },
   { key: "home", label: "2.1 首页圆环 + AI", hint: "圆环图片勾选排序，AI 文案修改" },
   { key: "commercial", label: "2.2 商业设计", hint: "项目切换编辑：名称、布局、素材绑定" },
-  { key: "personalLibrary", label: "2.3 个人设计册子", hint: "封面、飘落素材、2.3.1 册子页面都在这里" },
+  { key: "personalLibrary", label: "2.3 设计档案", hint: "书本管理：新增书本、封面与基础信息、逐页绑定素材与项目" },
   { key: "bio", label: "2.4 Bio", hint: "头像、简介、经历信息" },
 ];
 
@@ -720,36 +720,40 @@ const mergeContent = (raw) => {
           : defaultSiteContent.commercialDesign.navItems,
       sections: mergedSections,
     },
-    personalDesign: {
-      ...defaultSiteContent.personalDesign,
-      ...personal,
-      library: {
-        ...defaultSiteContent.personalDesign.library,
-        ...library,
-        book: {
-          ...defaultSiteContent.personalDesign.library.book,
-          ...toObject(library.book),
+    personalDesign: (() => {
+      const basePersonal = {
+        ...defaultSiteContent.personalDesign,
+        ...personal,
+        library: {
+          ...defaultSiteContent.personalDesign.library,
+          ...library,
+          book: {
+            ...defaultSiteContent.personalDesign.library.book,
+            ...toObject(library.book),
+          },
+          fallingImages:
+            toArray(library.fallingImages).length > 0
+              ? toArray(library.fallingImages)
+              : defaultSiteContent.personalDesign.library.fallingImages,
+          rightNote:
+            toArray(library.rightNote).length > 0
+              ? toArray(library.rightNote)
+              : defaultSiteContent.personalDesign.library.rightNote,
         },
-        fallingImages:
-          toArray(library.fallingImages).length > 0
-            ? toArray(library.fallingImages)
-            : defaultSiteContent.personalDesign.library.fallingImages,
-        rightNote:
-          toArray(library.rightNote).length > 0
-            ? toArray(library.rightNote)
-            : defaultSiteContent.personalDesign.library.rightNote,
-      },
-      book2019: {
-        ...defaultSiteContent.personalDesign.book2019,
-        ...book2019,
-        pages: toArray(book2019.pages),
-        pageWorkIds: unique(toArray(book2019.pageWorkIds).map((id) => toStringSafe(id).trim()).filter(Boolean)),
-        projects:
-          toArray(book2019.projects).length > 0
-            ? toArray(book2019.projects)
-            : defaultSiteContent.personalDesign.book2019.projects,
-      },
-    },
+        book2019: {
+          ...defaultSiteContent.personalDesign.book2019,
+          ...book2019,
+          pages: toArray(book2019.pages),
+          pageWorkIds: unique(toArray(book2019.pageWorkIds).map((id) => toStringSafe(id).trim()).filter(Boolean)),
+          projects:
+            toArray(book2019.projects).length > 0
+              ? toArray(book2019.projects)
+              : defaultSiteContent.personalDesign.book2019.projects,
+        },
+      };
+      const books = buildArchiveBooks(basePersonal);
+      return syncLegacyPersonalFromBooks(basePersonal, books);
+    })(),
     bio: {
       ...defaultSiteContent.bio,
       ...bio,
@@ -760,6 +764,294 @@ const mergeContent = (raw) => {
       projectExperience: toArray(bio.projectExperience, defaultSiteContent.bio.projectExperience),
       workExperience: toArray(bio.workExperience, defaultSiteContent.bio.workExperience),
     },
+  };
+};
+
+const buildProjectNameByPageMap = (projects) => {
+  const map = new Map();
+  toArray(projects).forEach((project, rowIndex) => {
+    const name = toStringSafe(project?.name).trim() || `Project ${rowIndex + 1}`;
+    const start = Math.max(1, toNumberSafe(project?.start, rowIndex * 2 + 1));
+    const end = Math.max(start, toNumberSafe(project?.end, rowIndex * 2 + 2));
+    for (let pageNo = start; pageNo <= end; pageNo += 1) {
+      if (!map.has(pageNo)) {
+        map.set(pageNo, name);
+      }
+    }
+  });
+  return map;
+};
+
+const normalizeArchivePage = (rawPage, index, projectNameByPage = new Map()) => {
+  const safeRaw = toObject(rawPage);
+  const pageNo = index + 1;
+  const id = toStringSafe(safeRaw.id, `page-${pageNo}`).trim() || `page-${pageNo}`;
+  const workId = toStringSafe(safeRaw.workId || safeRaw.itemId).trim();
+  const mediaUrl = toStringSafe(safeRaw.mediaUrl || safeRaw.url || safeRaw.imageUrl).trim();
+  const projectName =
+    toStringSafe(safeRaw.projectName || safeRaw.project).trim() ||
+    toStringSafe(projectNameByPage.get(pageNo)).trim();
+  return {
+    id,
+    workId,
+    mediaUrl,
+    projectName,
+  };
+};
+
+const buildArchivePagesFromLegacySpreads = (legacyPages, projectNameByPage = new Map()) => {
+  const result = [];
+  toArray(legacyPages).forEach((spread, spreadIndex) => {
+    const frontNo = spreadIndex * 2 + 1;
+    const backNo = spreadIndex * 2 + 2;
+    const frontUrl = toStringSafe(spread?.front?.background).trim();
+    const backUrl = toStringSafe(spread?.back?.background).trim();
+    if (frontUrl) {
+      result.push({
+        id: `page-${frontNo}`,
+        workId: "",
+        mediaUrl: frontUrl,
+        projectName: toStringSafe(projectNameByPage.get(frontNo)).trim(),
+      });
+    }
+    if (backUrl) {
+      result.push({
+        id: `page-${backNo}`,
+        workId: "",
+        mediaUrl: backUrl,
+        projectName: toStringSafe(projectNameByPage.get(backNo)).trim(),
+      });
+    }
+  });
+  return result;
+};
+
+const deriveArchivePageWorkIds = (pages) =>
+  unique(
+    toArray(pages)
+      .map((page) => toStringSafe(page?.workId).trim())
+      .filter(Boolean)
+  );
+
+const deriveArchiveProjectsFromPages = (pages) => {
+  const list = toArray(pages);
+  if (list.length === 0) return [];
+  const result = [];
+  let currentStart = 1;
+  let currentName = toStringSafe(list[0]?.projectName).trim() || "未命名项目";
+
+  for (let i = 1; i <= list.length; i += 1) {
+    const nextName = toStringSafe(list[i]?.projectName).trim() || "未命名项目";
+    if (i === list.length || nextName !== currentName) {
+      result.push({
+        start: currentStart,
+        end: i,
+        name: currentName,
+      });
+      currentStart = i + 1;
+      currentName = nextName;
+    }
+  }
+
+  return result;
+};
+
+const normalizeArchiveBook = (rawBook, index, personalFallback = {}) => {
+  const safeRaw = toObject(rawBook);
+  const fallbackLibrary = toObject(personalFallback?.library);
+  const fallbackBookMeta = toObject(fallbackLibrary?.book);
+  const fallbackBook2019 = toObject(personalFallback?.book2019);
+  const inlineBookMeta = {
+    title: safeRaw.title,
+    type: safeRaw.type,
+    size: safeRaw.size,
+    year: safeRaw.year,
+    href: safeRaw.href,
+    coverUrl: safeRaw.coverUrl,
+    openLabel: safeRaw.openLabel,
+  };
+  const bookMeta = {
+    ...defaultSiteContent.personalDesign.library.book,
+    ...fallbackBookMeta,
+    ...inlineBookMeta,
+    ...toObject(safeRaw.book),
+  };
+  const id = toStringSafe(safeRaw.id, `book-${index + 1}`).trim() || `book-${index + 1}`;
+  const label =
+    toStringSafe(safeRaw.label).trim() ||
+    toStringSafe(bookMeta?.title).trim() ||
+    `第 ${index + 1} 本书`;
+
+  const sourceFalling =
+    toArray(safeRaw.fallingImages).length > 0
+      ? toArray(safeRaw.fallingImages)
+      : toArray(fallbackLibrary?.fallingImages).length > 0
+        ? toArray(fallbackLibrary.fallingImages)
+        : toArray(defaultSiteContent.personalDesign.library.fallingImages);
+  const fallingImages = sourceFalling
+    .map((item, idx) => ({
+      src: toStringSafe(item?.src).trim(),
+      rotate: toNumberSafe(item?.rotate, idx % 2 === 0 ? 270 : 0),
+      width: toNumberSafe(item?.width, 1279),
+      height: toNumberSafe(item?.height, 1706),
+    }))
+    .filter((item) => item.src);
+
+  const sourceProjects =
+    toArray(safeRaw.projects).length > 0
+      ? toArray(safeRaw.projects)
+      : toArray(fallbackBook2019?.projects).length > 0
+        ? toArray(fallbackBook2019.projects)
+        : toArray(defaultSiteContent.personalDesign.book2019.projects);
+  const projectNameByPage = buildProjectNameByPageMap(sourceProjects);
+
+  const rawPages = toArray(safeRaw.pages).length > 0 ? toArray(safeRaw.pages) : [];
+  const hasNewPageShape = rawPages.some((page) => {
+    const obj = toObject(page);
+    return (
+      Object.prototype.hasOwnProperty.call(obj, "workId") ||
+      Object.prototype.hasOwnProperty.call(obj, "projectName") ||
+      Object.prototype.hasOwnProperty.call(obj, "mediaUrl") ||
+      Object.prototype.hasOwnProperty.call(obj, "project")
+    );
+  });
+  const hasLegacySpreadShape =
+    rawPages.length > 0 &&
+    rawPages.some((page) => toObject(page).front || toObject(page).back) &&
+    !hasNewPageShape;
+
+  const sourcePageWorkIds =
+    toArray(safeRaw.pageWorkIds).length > 0
+      ? toArray(safeRaw.pageWorkIds)
+      : toArray(fallbackBook2019?.pageWorkIds);
+
+  let pages = [];
+  if (hasNewPageShape) {
+    pages = rawPages.map((page, rowIndex) =>
+      normalizeArchivePage(page, rowIndex, projectNameByPage)
+    );
+  } else if (hasLegacySpreadShape) {
+    pages = buildArchivePagesFromLegacySpreads(rawPages, projectNameByPage);
+  } else if (sourcePageWorkIds.length > 0) {
+    pages = sourcePageWorkIds.map((idValue, rowIndex) =>
+      normalizeArchivePage(
+        {
+          id: `page-${rowIndex + 1}`,
+          workId: toStringSafe(idValue).trim(),
+          projectName: toStringSafe(projectNameByPage.get(rowIndex + 1)).trim(),
+        },
+        rowIndex,
+        projectNameByPage
+      )
+    );
+  } else {
+    const legacyPages = toArray(fallbackBook2019?.pages);
+    pages = buildArchivePagesFromLegacySpreads(legacyPages, projectNameByPage);
+  }
+
+  const normalizedPages = pages.map((page, rowIndex) =>
+    normalizeArchivePage(page, rowIndex, projectNameByPage)
+  );
+
+  return {
+    id,
+    label,
+    book: bookMeta,
+    fallingImages,
+    pages: normalizedPages,
+    pageWorkIds: deriveArchivePageWorkIds(normalizedPages),
+    projects: deriveArchiveProjectsFromPages(normalizedPages),
+  };
+};
+
+const buildArchiveBooks = (personalRaw) => {
+  const personal = toObject(personalRaw);
+  const rawBooks = toArray(personal.books);
+  if (rawBooks.length > 0) {
+    return rawBooks.map((book, index) => normalizeArchiveBook(book, index, personal));
+  }
+
+  const legacyBook = normalizeArchiveBook(
+    {
+      id: "book-1",
+      label: toStringSafe(personal?.library?.book?.title, "第 1 本书"),
+      book: toObject(personal?.library?.book),
+      fallingImages: toArray(personal?.library?.fallingImages),
+      pageWorkIds: toArray(personal?.book2019?.pageWorkIds),
+      pages: toArray(personal?.book2019?.pages),
+      projects: toArray(personal?.book2019?.projects),
+    },
+    0,
+    personal
+  );
+
+  return [legacyBook];
+};
+
+const syncLegacyPersonalFromBooks = (personalRaw, booksRaw) => {
+  const personal = {
+    ...toObject(personalRaw),
+  };
+  const books = toArray(booksRaw).map((book, index) =>
+    normalizeArchiveBook(book, index, personal)
+  );
+
+  if (books.length === 0) {
+    books.push(normalizeArchiveBook({}, 0, personal));
+  }
+
+  const primaryBook = books[0];
+
+  const nextLibrary = {
+    ...defaultSiteContent.personalDesign.library,
+    ...toObject(personal.library),
+  };
+  nextLibrary.book = {
+    ...defaultSiteContent.personalDesign.library.book,
+    ...toObject(nextLibrary.book),
+    ...toObject(primaryBook.book),
+  };
+  nextLibrary.fallingImages =
+    toArray(primaryBook.fallingImages).length > 0
+      ? toArray(primaryBook.fallingImages)
+      : toArray(defaultSiteContent.personalDesign.library.fallingImages);
+
+  const nextBook2019 = {
+    ...defaultSiteContent.personalDesign.book2019,
+    ...toObject(personal.book2019),
+  };
+  const primaryPages = toArray(primaryBook.pages).map((page, pageIndex) =>
+    normalizeArchivePage(page, pageIndex)
+  );
+  nextBook2019.pageWorkIds = deriveArchivePageWorkIds(primaryPages);
+  nextBook2019.projects = deriveArchiveProjectsFromPages(primaryPages);
+  nextBook2019.pages = [];
+  for (let i = 0; i < primaryPages.length; i += 2) {
+    const frontPage = primaryPages[i];
+    const backPage = primaryPages[i + 1] || null;
+    const frontBackground = toStringSafe(frontPage?.mediaUrl).trim();
+    const backBackground = toStringSafe(backPage?.mediaUrl || frontPage?.mediaUrl).trim();
+    nextBook2019.pages.push({
+      front: {
+        title: "",
+        text: "",
+        background: frontBackground,
+        pageNum: i + 1,
+      },
+      back: {
+        title: "",
+        text: "",
+        background: backBackground,
+        pageNum: i + 2,
+      },
+    });
+  }
+
+  return {
+    ...personal,
+    books,
+    library: nextLibrary,
+    book2019: nextBook2019,
   };
 };
 
@@ -821,6 +1113,11 @@ const normalizeForSave = (config) => {
     }))
     .filter((item) => item.name);
 
+  next.personalDesign = syncLegacyPersonalFromBooks(
+    next.personalDesign,
+    buildArchiveBooks(next.personalDesign)
+  );
+
   next.bio.meta = toArray(next.bio.meta)
     .map((item) => ({
       label: toStringSafe(item?.label).trim(),
@@ -871,6 +1168,8 @@ export default function AdminPage() {
   const [activeCommercialPageId, setActiveCommercialPageId] = useState("");
   const [selectedCommercialElementId, setSelectedCommercialElementId] = useState("");
   const [expandedCommercialProjects, setExpandedCommercialProjects] = useState({});
+  const [activeArchiveBookId, setActiveArchiveBookId] = useState("");
+  const [activeArchivePageId, setActiveArchivePageId] = useState("");
   const [commercialCanvasScale, setCommercialCanvasScale] = useState(1);
   const [commercialViewportRatio, setCommercialViewportRatio] = useState(16 / 9);
   const [commercialSpinePercent, setCommercialSpinePercent] = useState(50);
@@ -1174,6 +1473,11 @@ export default function AdminPage() {
     return [];
   }, [config?.commercialDesign?.manualLayouts, config?.commercialDesign?.navItems, commercialViewportRatio]);
 
+  const archiveBooks = useMemo(
+    () => buildArchiveBooks(config?.personalDesign),
+    [config?.personalDesign]
+  );
+
   useEffect(() => {
     if (activePanel !== "commercial") return;
     const current = toArray(config?.commercialDesign?.manualLayouts);
@@ -1317,6 +1621,37 @@ export default function AdminPage() {
       if (observer) observer.disconnect();
     };
   }, [activePanel, activeCommercialSection, activeCommercialPageId]);
+
+  useEffect(() => {
+    if (activePanel !== "personalLibrary") return;
+    if (archiveBooks.length === 0) return;
+    const exists = archiveBooks.some(
+      (book) => toStringSafe(book.id) === toStringSafe(activeArchiveBookId)
+    );
+    if (!exists) {
+      setActiveArchiveBookId(toStringSafe(archiveBooks[0].id));
+    }
+  }, [activePanel, archiveBooks, activeArchiveBookId]);
+
+  useEffect(() => {
+    if (activePanel !== "personalLibrary") return;
+    const activeBook =
+      archiveBooks.find((book) => toStringSafe(book.id) === toStringSafe(activeArchiveBookId)) ||
+      archiveBooks[0];
+    const pages = toArray(activeBook?.pages).map((page, index) =>
+      normalizeArchivePage(page, index)
+    );
+    if (pages.length === 0) {
+      if (activeArchivePageId) setActiveArchivePageId("");
+      return;
+    }
+    const exists = pages.some(
+      (page) => toStringSafe(page.id) === toStringSafe(activeArchivePageId)
+    );
+    if (!exists) {
+      setActiveArchivePageId(toStringSafe(pages[0].id));
+    }
+  }, [activePanel, archiveBooks, activeArchiveBookId, activeArchivePageId]);
 
   const renderMiniPreview = (itemOrUrl, className = styles.previewThumb) => {
     const item = typeof itemOrUrl === "string" ? itemMapByUrl.get(itemOrUrl) : itemOrUrl;
@@ -2775,302 +3110,398 @@ export default function AdminPage() {
 
 
   const renderPersonalLibraryPanel = () => {
-    const book = toObject(config?.personalDesign?.library?.book);
-    const fallingImages = toArray(config?.personalDesign?.library?.fallingImages);
+    const books = archiveBooks;
+    const activeBook =
+      books.find((book) => toStringSafe(book.id) === toStringSafe(activeArchiveBookId)) || books[0] || null;
+    const activeBookId = toStringSafe(activeBook?.id);
+    const selectedBook = activeBook || normalizeArchiveBook({}, 0, config?.personalDesign);
+    const selectedBookMeta = toObject(selectedBook.book);
+    const bookPages = toArray(selectedBook.pages).map((page, pageIndex) =>
+      normalizeArchivePage(page, pageIndex)
+    );
+    const pageCandidates = getCandidates("personalLibrary", ["image"]);
+    const projectOptions = unique(
+      bookPages.map((page) => toStringSafe(page.projectName).trim()).filter(Boolean)
+    );
+    const activePage =
+      bookPages.find((page) => toStringSafe(page.id) === toStringSafe(activeArchivePageId)) ||
+      bookPages[0] ||
+      null;
+    const activePageId = toStringSafe(activePage?.id);
+    const activePageIndex = bookPages.findIndex(
+      (page) => toStringSafe(page.id) === activePageId
+    );
+    const activePickerKey = `archive-page-picker-${activeBookId || "default"}-${activePageId || "none"}`;
+    const activePickerKeyword = getPickerKeyword(activePickerKey);
+    const visiblePickerCandidates = pageCandidates.filter((item) => {
+      if (!activePickerKeyword) return true;
+      const hay = `${toStringSafe(item.title)} ${toStringSafe(item.mediaUrl)}`.toLowerCase();
+      return hay.includes(activePickerKeyword);
+    });
+    const pageRangeHintMap = new Map();
+    deriveArchiveProjectsFromPages(bookPages).forEach((project) => {
+      const start = Math.max(1, toNumberSafe(project?.start, 1));
+      const end = Math.max(start, toNumberSafe(project?.end, start));
+      const projectName = toStringSafe(project?.name, "未命名项目");
+      const rangeText = start === end ? `第 ${start} 页` : `第 ${start}-${end} 页`;
+      for (let pageNo = start; pageNo <= end; pageNo += 1) {
+        pageRangeHintMap.set(pageNo, `${projectName} · ${rangeText}`);
+      }
+    });
 
-    const selectedFallingIds = fallingImages
-      .map((item) => itemMapByUrl.get(toStringSafe(item?.src))?.id)
-      .filter(Boolean)
-      .map((id) => toStringSafe(id));
+    const updateBooks = (updater) => {
+      setConfig((prev) => {
+        const next = structuredClone(prev);
+        const baseBooks = buildArchiveBooks(next.personalDesign);
+        const updatedBooks = toArray(updater(baseBooks)).map((book, index) =>
+          normalizeArchiveBook(book, index, next.personalDesign)
+        );
+        const syncedPersonal = syncLegacyPersonalFromBooks(next.personalDesign, updatedBooks);
+        next.personalDesign = {
+          ...next.personalDesign,
+          ...syncedPersonal,
+        };
+        return next;
+      });
+    };
 
-    const updateFallingByIds = (ids) => {
-      const previousBySrc = new Map(
-        fallingImages.map((item) => [toStringSafe(item?.src), item])
+    const updateActiveBook = (updater) => {
+      if (!activeBookId) return;
+      updateBooks((baseBooks) =>
+        baseBooks.map((book, index) =>
+          toStringSafe(book.id) === activeBookId
+            ? normalizeArchiveBook(updater(book), index, config?.personalDesign)
+            : book
+        )
       );
-      const next = ids
-        .map((id, idx) => {
-          const work = itemMapById.get(id);
-          if (!work) return null;
-          const prev = previousBySrc.get(toStringSafe(work.mediaUrl));
-          return {
-            src: toStringSafe(work.mediaUrl),
-            rotate: toNumberSafe(prev?.rotate, idx % 2 === 0 ? 270 : 0),
-            width: toNumberSafe(prev?.width, 1279),
-            height: toNumberSafe(prev?.height, 1706),
-          };
+    };
+
+    const setPageRows = (rows) => {
+      updateActiveBook((book) => ({
+        ...book,
+        pages: toArray(rows).map((page, index) => normalizeArchivePage(page, index)),
+      }));
+    };
+
+    const updatePageRow = (rowIndex, patch) => {
+      setPageRows(
+        bookPages.map((row, idx) => {
+          if (idx !== rowIndex) return row;
+          const base = { ...row };
+          if (typeof patch === "function") return patch(base);
+          return { ...base, ...toObject(patch) };
         })
-        .filter(Boolean);
-      updateConfigPath(["personalDesign", "library", "fallingImages"], next);
+      );
+    };
+
+    const createBook = () => {
+      const idSet = new Set(books.map((book) => toStringSafe(book.id)));
+      let cursor = books.length + 1;
+      let nextId = `book-${cursor}`;
+      while (idSet.has(nextId)) {
+        cursor += 1;
+        nextId = `book-${cursor}`;
+      }
+      const nextBook = normalizeArchiveBook(
+        {
+          id: nextId,
+          label: `第 ${cursor} 本书`,
+          book: {
+            ...defaultSiteContent.personalDesign.library.book,
+            title: `BOOK ${cursor}`,
+            year: "",
+            href: "/design-archive/2019-2024",
+            coverUrl: "",
+            openLabel: "OPEN PORTFOLIO",
+          },
+          fallingImages: [],
+          pages: [],
+        },
+        books.length,
+        config?.personalDesign
+      );
+      updateBooks((baseBooks) => [...baseBooks, nextBook]);
+      setActiveArchiveBookId(nextId);
+    };
+
+    const removeActiveBook = () => {
+      if (!activeBookId || books.length <= 1) return;
+      const currentIndex = books.findIndex((book) => toStringSafe(book.id) === activeBookId);
+      const fallback = books[currentIndex + 1] || books[currentIndex - 1] || books[0];
+      updateBooks((baseBooks) =>
+        baseBooks.filter((book) => toStringSafe(book.id) !== activeBookId)
+      );
+      setActiveArchiveBookId(toStringSafe(fallback?.id));
     };
 
     return (
-      <div className={styles.stack}>
+      <div className={styles.archivePanel}>
         <details className={styles.card} open>
-          <summary className={styles.sectionSummary}>书籍基础信息</summary>
+          <summary className={styles.sectionSummary}>书本管理（当前共 {books.length} 本）</summary>
+          <div className={styles.inlineActions}>
+            <button type="button" className={styles.iconBtn} onClick={createBook}>
+              + 新建书本
+            </button>
+            <button
+              type="button"
+              className={styles.iconBtnDanger}
+              onClick={removeActiveBook}
+              disabled={books.length <= 1}
+            >
+              删除当前书本
+            </button>
+          </div>
+          <div className={styles.projectTree}>
+            {books.map((book, index) => {
+              const isActive = toStringSafe(book.id) === activeBookId;
+              const pageCount = toArray(book?.pages).length;
+              return (
+                <button
+                  key={`archive-book-${book.id}`}
+                  type="button"
+                  className={`${styles.pageTreeBtn} ${isActive ? styles.pageTreeBtnActive : ""}`}
+                  onClick={() => setActiveArchiveBookId(toStringSafe(book.id))}
+                >
+                  <span>第 {index + 1} 本</span>
+                  <strong>{toStringSafe(book.label, `第 ${index + 1} 本书`)}</strong>
+                  <small className={styles.archiveBookMeta}>{pageCount} 页</small>
+                </button>
+              );
+            })}
+          </div>
+        </details>
+
+        <div className={styles.archivePanelMain}>
+
+        <details className={styles.card} open>
+          <summary className={styles.sectionSummary}>当前书本：基础信息</summary>
           <div className={styles.gridTwo}>
             <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>标题</span>
+              <span className={styles.fieldLabel}>书本名称（管理显示）</span>
               <input
                 className={styles.input}
-                value={toStringSafe(book?.title)}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "book", "title"], event.target.value)}
+                value={toStringSafe(selectedBook.label)}
+                onChange={(event) =>
+                  updateActiveBook((book) => ({ ...book, label: event.target.value }))
+                }
               />
             </label>
             <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>类型</span>
+              <span className={styles.fieldLabel}>前台标题</span>
               <input
                 className={styles.input}
-                value={toStringSafe(book?.type)}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "book", "type"], event.target.value)}
-              />
-            </label>
-            <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>尺寸</span>
-              <input
-                className={styles.input}
-                value={toStringSafe(book?.size)}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "book", "size"], event.target.value)}
-              />
-            </label>
-            <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>年份</span>
-              <input
-                className={styles.input}
-                value={toStringSafe(book?.year)}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "book", "year"], event.target.value)}
-              />
-            </label>
-            <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>打开链接</span>
-              <input
-                className={styles.input}
-                value={toStringSafe(book?.href)}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "book", "href"], event.target.value)}
-              />
-            </label>
-            <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>按钮文案</span>
-              <input
-                className={styles.input}
-                value={toStringSafe(book?.openLabel)}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "book", "openLabel"], event.target.value)}
+                value={toStringSafe(selectedBookMeta?.title)}
+                onChange={(event) =>
+                  updateActiveBook((book) => ({
+                    ...book,
+                    book: { ...toObject(book.book), title: event.target.value },
+                  }))
+                }
               />
             </label>
           </div>
 
           {renderSingleWorkPicker({
-            pickerKey: "personal-library-cover",
+            pickerKey: `archive-book-cover-${activeBookId || "default"}`,
             label: "封面图片",
             tagId: "personalLibrary",
             acceptedTypes: ["image"],
-            value: toStringSafe(book?.coverUrl),
-            onChange: (url) => updateConfigPath(["personalDesign", "library", "book", "coverUrl"], url),
+            value: toStringSafe(selectedBookMeta?.coverUrl),
+            onChange: (url) =>
+              updateActiveBook((book) => ({
+                ...book,
+                book: { ...toObject(book.book), coverUrl: url },
+              })),
             emptyText: "未设置封面",
             detailsTitle: "展开封面缩略图",
           })}
         </details>
 
         <details className={styles.card} open>
-          <summary className={styles.sectionSummary}>飘落素材（高密度选择）</summary>
-          {renderOrderedWorkPicker({
-            pickerKey: "personal-library-falling",
-            label: "勾选并排序飘落图片",
-            tagId: "personalLibrary",
-            acceptedTypes: ["image"],
-            values: selectedFallingIds,
-            onChange: updateFallingByIds,
-            detailsTitle: "展开图片列表",
-          })}
+          <summary className={styles.sectionSummary}>当前书本：页面结构（每页一行）</summary>
 
-          <div className={styles.tableList}>
-            {fallingImages.map((item, index) => (
-              <div key={`falling-${index}-${item.src}`} className={styles.tableRow}>
-                <span className={styles.fixedCell}>图 {index + 1}</span>
-                {renderMiniPreview(itemMapByUrl.get(toStringSafe(item.src)) || { mediaUrl: item.src, mediaType: "image" })}
-                <select
-                  className={styles.input}
-                  value={toNumberSafe(item.rotate, 0)}
-                  onChange={(event) =>
-                    updateConfigPath(
-                      ["personalDesign", "library", "fallingImages", index, "rotate"],
-                      toNumberSafe(event.target.value, 0)
-                    )
-                  }
-                >
-                  <option value={0}>旋转 0°</option>
-                  <option value={90}>旋转 90°</option>
-                  <option value={180}>旋转 180°</option>
-                  <option value={270}>旋转 270°</option>
-                </select>
-              </div>
-            ))}
-          </div>
-        </details>
-
-        <details className={styles.card} open>
-          <summary className={styles.sectionSummary}>右侧文案与版权</summary>
-          <div className={styles.gridTwo}>
-            <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>右侧文案第 1 行</span>
-              <input
-                className={styles.input}
-                value={toStringSafe(config?.personalDesign?.library?.rightNote?.[0])}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "rightNote", 0], event.target.value)}
-              />
-            </label>
-            <label className={styles.fieldBlock}>
-              <span className={styles.fieldLabel}>右侧文案第 2 行</span>
-              <input
-                className={styles.input}
-                value={toStringSafe(config?.personalDesign?.library?.rightNote?.[1])}
-                onChange={(event) => updateConfigPath(["personalDesign", "library", "rightNote", 1], event.target.value)}
-              />
-            </label>
-          </div>
-          <label className={styles.fieldBlock}>
-            <span className={styles.fieldLabel}>左下角版权文案</span>
-            <input
-              className={styles.input}
-              value={toStringSafe(config?.personalDesign?.library?.leftCopyright)}
-              onChange={(event) => updateConfigPath(["personalDesign", "library", "leftCopyright"], event.target.value)}
-            />
-          </label>
-        </details>
-
-        {renderPersonalBookPanel()}
-      </div>
-    );
-  };
-
-  const deriveIdsFromBookPages = () => {
-    const pages = toArray(config?.personalDesign?.book2019?.pages);
-    const ids = [];
-    pages.forEach((page) => {
-      const frontUrl = toStringSafe(page?.front?.background);
-      const backUrl = toStringSafe(page?.back?.background);
-      if (frontUrl && itemMapByUrl.get(frontUrl)) ids.push(toStringSafe(itemMapByUrl.get(frontUrl).id));
-      if (backUrl && itemMapByUrl.get(backUrl)) ids.push(toStringSafe(itemMapByUrl.get(backUrl).id));
-    });
-    return unique(ids);
-  };
-
-  const renderPersonalBookPanel = () => {
-    const explicitIds = toArray(config?.personalDesign?.book2019?.pageWorkIds).map((id) => toStringSafe(id));
-    const pageWorkIds = explicitIds.length > 0 ? explicitIds : deriveIdsFromBookPages();
-    const projects = toArray(config?.personalDesign?.book2019?.projects);
-
-    const orderedItems = pageWorkIds
-      .map((id) => itemMapById.get(id))
-      .filter(Boolean);
-
-    const spreads = [];
-    for (let i = 0; i < orderedItems.length; i += 2) {
-      spreads.push({
-        left: orderedItems[i] || null,
-        right: orderedItems[i + 1] || null,
-        spread: Math.floor(i / 2) + 1,
-      });
-    }
-
-    return (
-      <>
-        <details className={styles.card}>
-          <summary className={styles.sectionSummary}>2.3.1 当前册子：页面图片顺序（第几页用哪张）</summary>
-          {renderOrderedWorkPicker({
-            pickerKey: "personal-book-pages",
-            label: "勾选并排序页面图片",
-            tagId: "personalLibrary",
-            acceptedTypes: ["image"],
-            values: pageWorkIds,
-            onChange: (ids) => updateConfigPath(["personalDesign", "book2019", "pageWorkIds"], ids),
-            detailsTitle: "展开页面素材列表",
-          })}
-
-          <div className={styles.tableList}>
-            {spreads.length === 0 ? (
-              <p className={styles.tip}>还没有页面素材。先在作品管理上传并勾选 2.3 类目。</p>
-            ) : (
-              spreads.map((spread) => (
-                <div key={`spread-${spread.spread}`} className={styles.spreadRow}>
-                  <span className={styles.fixedCell}>跨页 {spread.spread}</span>
-                  <div className={styles.spreadCell}>
-                    {spread.left ? renderMiniPreview(spread.left) : <span className={styles.tip}>空</span>}
-                    <small>{spread.left?.title || "左页空"}</small>
-                  </div>
-                  <div className={styles.spreadCell}>
-                    {spread.right ? renderMiniPreview(spread.right) : <span className={styles.tip}>空</span>}
-                    <small>{spread.right?.title || "右页空"}</small>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </details>
-
-        <details className={styles.card}>
-          <summary className={styles.sectionSummary}>2.3.1 当前册子：项目范围</summary>
-          <div className={styles.tableList}>
-            {projects.map((project, index) => (
-              <div key={`project-${index}`} className={styles.tableRow}>
-                <input
-                  className={styles.smallInput}
-                  type="number"
-                  value={toNumberSafe(project?.start, index * 2 + 1)}
-                  onChange={(event) =>
-                    updateConfigPath(
-                      ["personalDesign", "book2019", "projects", index, "start"],
-                      toNumberSafe(event.target.value, index * 2 + 1)
-                    )
-                  }
-                />
-                <input
-                  className={styles.smallInput}
-                  type="number"
-                  value={toNumberSafe(project?.end, index * 2 + 2)}
-                  onChange={(event) =>
-                    updateConfigPath(
-                      ["personalDesign", "book2019", "projects", index, "end"],
-                      toNumberSafe(event.target.value, index * 2 + 2)
-                    )
-                  }
-                />
-                <input
-                  className={styles.input}
-                  value={toStringSafe(project?.name)}
-                  onChange={(event) =>
-                    updateConfigPath(["personalDesign", "book2019", "projects", index, "name"], event.target.value)
-                  }
-                />
-                <button
-                  type="button"
-                  className={styles.iconBtn}
-                  onClick={() => {
-                    const next = projects.filter((_, row) => row !== index);
-                    updateConfigPath(["personalDesign", "book2019", "projects"], next);
-                  }}
-                >
-                  删
-                </button>
-              </div>
-            ))}
+          <div className={styles.inlineActions}>
             <button
               type="button"
-              className={styles.ghostBtn}
+              className={styles.iconBtn}
               onClick={() =>
-                updateConfigPath(["personalDesign", "book2019", "projects"], [
-                  ...projects,
-                  { start: projects.length * 2 + 1, end: projects.length * 2 + 2, name: `Project ${projects.length + 1}` },
+                setPageRows([
+                  ...bookPages,
+                  {
+                    id: `page-${bookPages.length + 1}`,
+                    workId: "",
+                    mediaUrl: "",
+                    projectName: toStringSafe(bookPages[bookPages.length - 1]?.projectName),
+                  },
                 ])
               }
             >
-              新增项目范围
+              + 新增页面
             </button>
           </div>
+
+          <div className={styles.archiveCompactList}>
+            {bookPages.length === 0 ? (
+              <p className={styles.tip}>还没有页面，请先新增页面。</p>
+            ) : (
+              bookPages.map((page, pageIndex) => {
+                const previewItem =
+                  itemMapById.get(toStringSafe(page.workId)) ||
+                  itemMapByUrl.get(toStringSafe(page.mediaUrl));
+                const isActive = toStringSafe(page.id) === activePageId;
+                const rangeHint = toStringSafe(pageRangeHintMap.get(pageIndex + 1));
+                const currentProject = toStringSafe(page.projectName);
+                const hasCurrentOption =
+                  !currentProject || projectOptions.includes(currentProject);
+                return (
+                  <div
+                    key={`archive-page-row-${page.id}-${pageIndex}`}
+                    className={`${styles.archiveCompactRow} ${isActive ? styles.archiveCompactRowActive : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className={styles.archivePageSelectBtn}
+                      onClick={() => setActiveArchivePageId(toStringSafe(page.id))}
+                    >
+                      第 {pageIndex + 1} 页
+                    </button>
+                    {previewItem ? (
+                      renderMiniPreview(previewItem, styles.archiveMiniPreview)
+                    ) : (
+                      <div className={`${styles.archiveMiniPreview} ${styles.previewEmpty}`}>无</div>
+                    )}
+                    <select
+                      className={styles.input}
+                      value={currentProject}
+                      onChange={(event) => {
+                        const nextValue = toStringSafe(event.target.value);
+                        if (nextValue === "__new__") {
+                          const name = window.prompt("输入项目名称", currentProject || "新项目");
+                          if (toStringSafe(name).trim()) {
+                            updatePageRow(pageIndex, { projectName: toStringSafe(name).trim() });
+                          }
+                          return;
+                        }
+                        updatePageRow(pageIndex, { projectName: nextValue });
+                      }}
+                    >
+                      <option value="">未分组</option>
+                      {!hasCurrentOption && currentProject ? (
+                        <option value={currentProject}>{currentProject}</option>
+                      ) : null}
+                      {projectOptions.map((name) => (
+                        <option key={`archive-project-option-${name}`} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                      <option value="__new__">+ 新建项目</option>
+                    </select>
+                    <small className={styles.archiveRangeHint}>{rangeHint || "未分组"}</small>
+                    <div className={styles.rowActions}>
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        onClick={() => {
+                          if (pageIndex <= 0) return;
+                          const nextRows = [...bookPages];
+                          [nextRows[pageIndex - 1], nextRows[pageIndex]] = [nextRows[pageIndex], nextRows[pageIndex - 1]];
+                          setPageRows(nextRows);
+                        }}
+                        disabled={pageIndex === 0}
+                      >
+                        上
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.iconBtn}
+                        onClick={() => {
+                          if (pageIndex >= bookPages.length - 1) return;
+                          const nextRows = [...bookPages];
+                          [nextRows[pageIndex + 1], nextRows[pageIndex]] = [nextRows[pageIndex], nextRows[pageIndex + 1]];
+                          setPageRows(nextRows);
+                        }}
+                        disabled={pageIndex >= bookPages.length - 1}
+                      >
+                        下
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.iconBtnDanger}
+                        onClick={() => setPageRows(bookPages.filter((_, idx) => idx !== pageIndex))}
+                      >
+                        删
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          <details className={styles.thumbPicker}>
+            <summary>
+              {activePage ? `给第 ${activePageIndex + 1} 页选择图片` : "给当前页选择图片"}
+            </summary>
+            {!activePage ? (
+              <p className={styles.tip}>请先新增并选中页面。</p>
+            ) : (
+              <>
+                <div className={styles.pickerTopRow}>
+                  <select
+                    className={styles.input}
+                    value={activePageId}
+                    onChange={(event) => setActiveArchivePageId(toStringSafe(event.target.value))}
+                  >
+                    {bookPages.map((page, index) => (
+                      <option key={`archive-page-select-${page.id}`} value={toStringSafe(page.id)}>
+                        第 {index + 1} 页
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className={styles.searchInput}
+                    placeholder="搜索素材"
+                    value={toStringSafe(pickerQuery[activePickerKey])}
+                    onChange={(event) => updatePickerKeyword(activePickerKey, event.target.value)}
+                  />
+                </div>
+                {visiblePickerCandidates.length === 0 ? (
+                  <p className={styles.tip}>请先在「1.作品管理」上传并勾选到设计档案。</p>
+                ) : (
+                  <div className={styles.thumbGrid}>
+                    {visiblePickerCandidates.map((item) => {
+                      const selected =
+                        toStringSafe(item.id) === toStringSafe(activePage?.workId) ||
+                        toStringSafe(item.mediaUrl) === toStringSafe(activePage?.mediaUrl);
+                      return (
+                        <button
+                          key={`archive-page-global-thumb-${item.id}`}
+                          type="button"
+                          className={`${styles.thumbItem} ${selected ? styles.thumbItemActive : ""}`}
+                          onClick={() => {
+                            if (activePageIndex < 0) return;
+                            updatePageRow(activePageIndex, {
+                              workId: toStringSafe(item.id),
+                              mediaUrl: toStringSafe(item.mediaUrl),
+                            });
+                          }}
+                        >
+                          {renderMiniPreview(item, styles.thumbImage)}
+                          <span className={styles.thumbName}>{toStringSafe(item.title, "未命名")}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </details>
         </details>
-      </>
+
+        </div>
+      </div>
     );
   };
-
   const renderBioPanel = () => {
     const meta = toArray(config?.bio?.meta);
     return (
@@ -3263,3 +3694,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
