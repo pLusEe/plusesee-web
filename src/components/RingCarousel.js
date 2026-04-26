@@ -10,6 +10,8 @@ const MIN_ITEMS = 42;
 const CAMERA_START = new THREE.Vector3(0, 1.4, 26);
 const LOOK_AT_START = new THREE.Vector3(0, 0.42, 0);
 const GROUP_POSITION = new THREE.Vector3(0, 0.4, 0);
+const MIN_CARD_ASPECT = 0.45;
+const MAX_CARD_ASPECT = 2.2;
 
 const getThumb = (item) => {
   if (item.thumbUrl) return item.thumbUrl;
@@ -41,6 +43,101 @@ const getDisplayItems = (items) => {
   let next = [...items];
   while (next.length < MIN_ITEMS) next = [...next, ...items];
   return next.slice(0, Math.max(MIN_ITEMS, items.length * 3));
+};
+
+const clampValue = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const finalizeTexture = (texture) => {
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 8;
+  texture.needsUpdate = true;
+  return texture;
+};
+
+const getTargetAspect = (item, sourceAspect) => {
+  if (typeof item?.ringAspect === "number") {
+    return clampValue(item.ringAspect, MIN_CARD_ASPECT, MAX_CARD_ASPECT);
+  }
+  return clampValue(sourceAspect, MIN_CARD_ASPECT, MAX_CARD_ASPECT);
+};
+
+const getCropRect = (sourceWidth, sourceHeight, targetAspect, zoom = 1, focusX = 0.5, focusY = 0.5) => {
+  const sourceAspect = sourceWidth / sourceHeight;
+  const safeZoom = clampValue(zoom, 1, 3);
+
+  let baseCropWidth;
+  let baseCropHeight;
+
+  if (sourceAspect > targetAspect) {
+    baseCropHeight = sourceHeight;
+    baseCropWidth = baseCropHeight * targetAspect;
+  } else {
+    baseCropWidth = sourceWidth;
+    baseCropHeight = baseCropWidth / targetAspect;
+  }
+
+  const cropWidth = Math.max(1, Math.round(baseCropWidth / safeZoom));
+  const cropHeight = Math.max(1, Math.round(baseCropHeight / safeZoom));
+  const x = clampValue(
+    Math.round((sourceWidth - cropWidth) * clampValue(focusX, 0, 1)),
+    0,
+    Math.max(0, sourceWidth - cropWidth)
+  );
+  const y = clampValue(
+    Math.round((sourceHeight - cropHeight) * clampValue(focusY, 0, 1)),
+    0,
+    Math.max(0, sourceHeight - cropHeight)
+  );
+
+  return { x, y, cropWidth, cropHeight };
+};
+
+const prepareTexture = (texture, item) => {
+  const source = texture?.image;
+  if (!source?.width || !source?.height) {
+    return finalizeTexture(texture.clone());
+  }
+
+  const sourceAspect = source.width / source.height;
+  const targetAspect = getTargetAspect(item, sourceAspect);
+  const focusX = clampValue(
+    typeof item?.ringCrop?.focusX === "number" ? item.ringCrop.focusX : 0.5,
+    0,
+    1
+  );
+  const focusY = clampValue(
+    typeof item?.ringCrop?.focusY === "number" ? item.ringCrop.focusY : 0.5,
+    0,
+    1
+  );
+  const zoom = clampValue(
+    typeof item?.ringCrop?.zoom === "number" ? item.ringCrop.zoom : 1,
+    1,
+    3
+  );
+  if (Math.abs(sourceAspect - targetAspect) < 0.02 && zoom <= 1.001) {
+    return finalizeTexture(texture.clone());
+  }
+  const { x, y, cropWidth, cropHeight } = getCropRect(
+    source.width,
+    source.height,
+    targetAspect,
+    zoom,
+    focusX,
+    focusY
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = cropWidth;
+  canvas.height = cropHeight;
+
+  const context = canvas.getContext("2d");
+  if (!context) {
+    return finalizeTexture(texture.clone());
+  }
+
+  context.drawImage(source, x, y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+  return finalizeTexture(new THREE.CanvasTexture(canvas));
 };
 
 const angularDelta = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
@@ -242,15 +339,15 @@ function RingScene({ displayItems, selectedIndex, hoveredIndex, rotationTarget, 
   const swayRef = useRef(0);
   const previousSelectedRef = useRef(null);
   const preparedTextures = useMemo(
-    () =>
-      textures.map((texture) => {
-        const nextTexture = texture.clone();
-        nextTexture.colorSpace = THREE.SRGBColorSpace;
-        nextTexture.anisotropy = 8;
-        nextTexture.needsUpdate = true;
-        return nextTexture;
-      }),
-    [textures]
+    () => displayItems.map((item, index) => prepareTexture(textures[index], item)),
+    [displayItems, textures]
+  );
+
+  useEffect(
+    () => () => {
+      preparedTextures.forEach((texture) => texture.dispose());
+    },
+    [preparedTextures]
   );
 
   const radius = Math.min(viewport.width, viewport.height) * 0.66;

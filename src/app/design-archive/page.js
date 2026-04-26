@@ -63,9 +63,14 @@ function RotatingBook({ coverUrl }) {
       emissive: "#ffffff",
       emissiveIntensity: 0.1,
     });
-    const front = new THREE.MeshBasicMaterial({
+    const front = new THREE.MeshStandardMaterial({
       map: preparedTexture || null,
       color: "#ffffff",
+      roughness: 0.9,
+      metalness: 0,
+      emissiveMap: preparedTexture || null,
+      emissive: "#ffffff",
+      emissiveIntensity: 0.28,
     });
     const back = new THREE.MeshStandardMaterial({
       color: "#ffffff",
@@ -124,6 +129,7 @@ function BookletCanvas({ coverUrl }) {
       <directionalLight position={[2.8, 5.2, 3.8]} intensity={1.18} castShadow />
       <directionalLight position={[-3, 2.5, 2.5]} intensity={0.62} />
       <directionalLight position={[0.4, 1.8, -2.4]} intensity={0.24} />
+      <spotLight position={[0.25, 0.45, 3.1]} intensity={1.45} angle={0.44} penumbra={0.75} distance={8} />
       <Suspense fallback={null}>
         <RotatingBook coverUrl={coverUrl} />
       </Suspense>

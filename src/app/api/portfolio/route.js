@@ -35,6 +35,7 @@ const TAG_TO_LEGACY = {
 const sanitizeText = (value) => (typeof value === "string" ? value.trim() : "");
 const unique = (list) => Array.from(new Set(list));
 const sanitizeUrl = (value) => (typeof value === "string" ? value.trim() : "");
+const clampNumber = (value, min, max) => Math.min(max, Math.max(min, value));
 const isInvalidUrl = (value) =>
   !value || value === "." || value === "/." || value.endsWith("/.");
 
@@ -110,6 +111,25 @@ const inferTitleFromMediaUrl = (mediaUrl) => {
   return title || "Untitled";
 };
 
+const normalizeRingAspect = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0.9;
+  return clampNumber(parsed, 0.45, 2.2);
+};
+
+const normalizeRingCrop = (value) => {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const focusX = Number(source.focusX);
+  const focusY = Number(source.focusY);
+  const zoom = Number(source.zoom);
+
+  return {
+    focusX: Number.isFinite(focusX) ? clampNumber(focusX, 0, 1) : 0.5,
+    focusY: Number.isFinite(focusY) ? clampNumber(focusY, 0, 1) : 0.5,
+    zoom: Number.isFinite(zoom) ? clampNumber(zoom, 1, 3) : 1,
+  };
+};
+
 const normalizeItemRecord = (item = {}) => {
   const mediaType = normalizeMediaType(item.mediaType);
   const mediaUrl = sanitizeUrl(item.mediaUrl);
@@ -131,6 +151,8 @@ const normalizeItemRecord = (item = {}) => {
     mediaType,
     mediaUrl,
     thumbUrl,
+    ringAspect: normalizeRingAspect(item.ringAspect),
+    ringCrop: normalizeRingCrop(item.ringCrop),
   };
 };
 
@@ -237,6 +259,52 @@ export async function POST(request) {
     const body = await request.json();
     const items = await readStoredItems();
 
+    if (body.action === "bulkUpsert") {
+      const incomingItems = Array.isArray(body.items) ? body.items : [];
+      const nextItems = [...items];
+
+      incomingItems.forEach((rawItem) => {
+        const mediaType = normalizeMediaType(rawItem?.mediaType);
+        const mediaUrl = sanitizeUrl(rawItem?.mediaUrl);
+        if (isInvalidUrl(mediaUrl)) return;
+
+        const requestedThumbUrl = sanitizeUrl(rawItem?.thumbUrl);
+        const thumbUrl = !isInvalidUrl(requestedThumbUrl)
+          ? requestedThumbUrl
+          : mediaType === "image"
+            ? mediaUrl
+            : FALLBACK_THUMB_URL;
+
+        const normalizedItem = normalizeItemRecord({
+          id: String(rawItem?.id || Date.now()),
+          title: sanitizeText(rawItem?.title) || inferTitleFromMediaUrl(mediaUrl),
+          category: rawItem?.category,
+          categories: rawItem?.categories ?? rawItem?.tags,
+          description: sanitizeText(rawItem?.description),
+          date: sanitizeText(rawItem?.date),
+          mediaType,
+          mediaUrl,
+          thumbUrl,
+          ringAspect: rawItem?.ringAspect,
+          ringCrop: rawItem?.ringCrop,
+        });
+
+        let index = nextItems.findIndex((item) => String(item.id) === normalizedItem.id);
+        if (index < 0) {
+          index = nextItems.findIndex((item) => sanitizeUrl(item.mediaUrl) === normalizedItem.mediaUrl);
+        }
+
+        if (index < 0) {
+          nextItems.push(normalizedItem);
+        } else {
+          nextItems[index] = normalizedItem;
+        }
+      });
+
+      await writeStoredItems(nextItems);
+      return NextResponse.json({ success: true, items: nextItems });
+    }
+
     if (body.action === "delete") {
       const targetId = String(body.id || "");
       const updated = items.filter((item) => String(item.id) !== targetId);
@@ -270,6 +338,8 @@ export async function POST(request) {
           mediaType,
           mediaUrl,
           thumbUrl,
+          ringAspect: body.ringAspect,
+          ringCrop: body.ringCrop,
         });
         items.push(upserted);
         await writeStoredItems(items);
@@ -299,6 +369,8 @@ export async function POST(request) {
         mediaType: nextMediaType,
         mediaUrl: nextMediaUrl,
         thumbUrl: nextThumbUrl,
+        ringAspect: body.ringAspect ?? previous.ringAspect,
+        ringCrop: body.ringCrop ?? previous.ringCrop,
       });
 
       items[index] = nextItem;
@@ -326,6 +398,8 @@ export async function POST(request) {
       mediaType: normalizedMediaType,
       mediaUrl: normalizedMediaUrl,
       thumbUrl: normalizedThumbUrl,
+      ringAspect: body.ringAspect,
+      ringCrop: body.ringCrop,
     });
 
     items.push(newItem);
