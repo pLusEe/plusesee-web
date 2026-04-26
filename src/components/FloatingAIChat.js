@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import styles from "./FloatingAIChat.module.css";
 
 const DEFAULT_PLACEHOLDER = "问项目、作品或合作方式";
-const QUICK_PROMPTS = ["介绍一下项目", "服务范围", "联系合作"];
+const QUICK_PROMPTS = ["我的实习经历", "我的专业背景", "我的联系方式"];
 const DRAG_THRESHOLD = 5;
 
 export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER }) {
@@ -240,7 +240,7 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
         <div className={styles.messagesArea}>
           {messages.length === 0 ? (
             <div className={styles.emptyState}>
-              <p>想了解哪件作品？</p>
+              <p>想了解什么问题？</p>
               <div className={styles.quickPrompts}>
                 {QUICK_PROMPTS.map((prompt) => (
                   <button key={prompt} type="button" onClick={() => sendMessage(prompt)}>

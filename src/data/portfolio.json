@@ -261,7 +261,7 @@
     "mediaType": "image",
     "mediaUrl": "/media/images/commercial-design/wechat-csc/客服中心1.png",
     "thumbUrl": "/media/images/commercial-design/wechat-csc/客服中心1.png",
-    "ringAspect": 0.9,
+    "ringAspect": 1.76,
     "ringCrop": {
       "focusX": 0.5,
       "focusY": 0.5,
@@ -321,7 +321,7 @@
     "mediaType": "image",
     "mediaUrl": "/media/images/archive/Frame 42.png",
     "thumbUrl": "/media/images/archive/Frame 42.png",
-    "ringAspect": 0.9,
+    "ringAspect": 0.45,
     "ringCrop": {
       "focusX": 0.5,
       "focusY": 0.5,

@@ -49,19 +49,6 @@ export default function RootLayout({ children }) {
               <Link href="/bio" className="nav-float" aria-label="bio / 简介">
                 <NavFlipLabel en="bio" zh="简介" />
               </Link>
-              <div className="nav-item nav-dropdown">
-                <a href="#" className="nav-link nav-float" aria-label="other works / 其他作品">
-                  <NavFlipLabel en="other works" zh="其他作品" />
-                </a>
-                <div className="dropdown-menu">
-                  <a href="#">soundart</a>
-                  <a href="#">media art</a>
-                  <a href="#">photography</a>
-                </div>
-              </div>
-              <Link href="/admin" className="admin-link nav-float" aria-label="admin / 管理后台">
-                <NavFlipLabel en="admin" zh="管理后台" />
-              </Link>
             </nav>
           </header>
 
