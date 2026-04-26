@@ -30,6 +30,7 @@ const DEFAULT_FALLING_IMAGES = [
 ];
 
 const DEFAULT_LIBRARY_CONFIG = defaultSiteContent.personalDesign.library;
+const ARCHIVE_COVER_ASPECT = 867 / 1812;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -62,10 +63,9 @@ function RotatingBook({ coverUrl }) {
       emissive: "#ffffff",
       emissiveIntensity: 0.1,
     });
-    const front = new THREE.MeshStandardMaterial({
+    const front = new THREE.MeshBasicMaterial({
       map: preparedTexture || null,
-      roughness: 0.82,
-      metalness: 0.03,
+      color: "#ffffff",
     });
     const back = new THREE.MeshStandardMaterial({
       color: "#ffffff",
@@ -88,12 +88,12 @@ function RotatingBook({ coverUrl }) {
   });
 
   return (
-    <group ref={groupRef} scale={[0.84, 0.84, 0.84]}>
+    <group ref={groupRef} scale={[0.68, 0.68, 0.68]}>
       <mesh castShadow receiveShadow material={materials}>
-        <boxGeometry args={[1.02, 1.62, 0.04]} />
+        <boxGeometry args={[1.62 * ARCHIVE_COVER_ASPECT, 1.62, 0.04]} />
       </mesh>
       <mesh position={[0, 0, -0.008]} castShadow receiveShadow>
-        <boxGeometry args={[0.94, 1.54, 0.022]} />
+        <boxGeometry args={[1.54 * ARCHIVE_COVER_ASPECT, 1.54, 0.022]} />
         <meshStandardMaterial
           color="#ffffff"
           roughness={0.92}

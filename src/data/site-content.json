@@ -413,7 +413,28 @@
     },
     "book2019": {
       "pages": [],
-      "projects": [],
+      "projects": [
+        {
+          "start": 7,
+          "end": 26,
+          "name": "数字服务设计"
+        },
+        {
+          "start": 27,
+          "end": 52,
+          "name": "品牌形象设计"
+        },
+        {
+          "start": 53,
+          "end": 64,
+          "name": "移动端交互设计"
+        },
+        {
+          "start": 65,
+          "end": 79,
+          "name": "其他设计"
+        }
+      ],
       "pageWorkIds": []
     },
     "books": [
