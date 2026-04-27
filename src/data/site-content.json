@@ -580,24 +580,24 @@
     ],
     "services": [
       {
-        "cn": "AI 工作流",
-        "en": "AI Workflow"
+        "cn": "体验设计",
+        "en": "Experience Design"
       },
       {
         "cn": "品牌设计",
         "en": "Brand Design"
       },
       {
-        "cn": "体验设计",
-        "en": "Experience Design"
+        "cn": "展陈设计",
+        "en": "Exhibition Design"
       },
       {
-        "cn": "交互设计",
-        "en": "Interaction Design"
+        "cn": "服务设计",
+        "en": "Service Design"
       },
       {
-        "cn": "跨领域设计",
-        "en": "Multidisciplinary Design"
+        "cn": "产品设计",
+        "en": "Product Design"
       },
       {
         "cn": "媒体艺术",
@@ -611,8 +611,8 @@
     "collaborators": [],
     "projectExperience": [
       {
-        "title": "书生妙析 ArtiMuse 上海人工智能实验室",
-        "role": "图像质量训练 / 美学评价体系构建"
+        "title": "ArtiMuse 美学评价大模型 上海人工智能实验室",
+        "role": "图像训练 / 美学评价体系构建"
       },
       {
         "title": "世界人工智能大会 WAIC 2025",
@@ -657,7 +657,7 @@
       },
       {
         "companyCn": "杭州大快文化创意有限公司（西湖音乐节主办方）",
-        "companyEn": "Hangzhou Dakua Culture Creative · West Lake Music Festival Organizer",
+        "companyEn": "Hangzhou Dakuai Culture Creative",
         "roleCn": "平面设计 / 插画设计",
         "roleEn": "Graphic / Illustration Design",
         "locationCn": "杭州",

@@ -286,15 +286,14 @@ function renderWorkItem(item, idx) {
           <div className={styles.experienceGroup}>
             <PairedText cn={item.companyCn} en={item.companyEn} />
           </div>
-          <div className={styles.experienceRole}>
-            <PairedText cn={item.roleCn} en={item.roleEn} />
+          <div className={styles.experienceRight}>
+            <div className={styles.experienceRole}>
+              <PairedText cn={item.roleCn} />
+            </div>
+            <div className={styles.experienceMeta}>
+              <PairedText cn={[item.locationCn, item.period].filter(Boolean).join(" · ")} />
+            </div>
           </div>
-        </div>
-        <div className={styles.experienceMeta}>
-          <PairedText
-            cn={[item.locationCn, item.period].filter(Boolean).join(" · ")}
-            en={[item.locationEn, item.period].filter(Boolean).join(" · ")}
-          />
         </div>
       </li>
     );

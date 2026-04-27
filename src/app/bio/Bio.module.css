@@ -258,9 +258,18 @@
   text-align: right;
 }
 
+.experienceRight {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+  text-align: right;
+}
+
 .experienceMeta {
   display: flex;
   flex-direction: column;
+  align-items: flex-end;
 }
 
 @media (max-width: 1024px) {
