@@ -228,6 +228,7 @@
   justify-content: space-between;
   gap: 1rem;
   align-items: start;
+  min-width: 0;
 }
 
 .itemTopline .primaryLine,
@@ -242,6 +243,16 @@
   font-size: clamp(0.84rem, 1.12cqw, 0.95rem);
   line-height: 1.45;
   text-align: right;
+}
+
+.projectItem .primaryLine {
+  min-width: 0;
+  white-space: normal;
+}
+
+.projectItem .projectRole {
+  max-width: min(26rem, 42cqw);
+  white-space: normal;
 }
 
 .experienceItem {
@@ -293,6 +304,10 @@
 
   .columns .block:nth-child(3) {
     grid-column: 1 / -1;
+  }
+
+  .projectItem .projectRole {
+    max-width: 44vw;
   }
 }
 
@@ -362,5 +377,9 @@
   .experienceMeta {
     align-items: flex-start;
     text-align: left;
+  }
+
+  .projectItem .projectRole {
+    max-width: 100%;
   }
 }
