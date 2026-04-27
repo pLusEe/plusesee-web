@@ -130,7 +130,7 @@
 }
 
 .metaLabel {
-  font-size: clamp(0.62rem, 0.88cqw, 0.68rem);
+  font-size: clamp(0.68rem, 0.72vw, 0.76rem);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -139,9 +139,14 @@
 
 .metaValue,
 .metaLink {
-  font-size: clamp(0.84rem, 1.12cqw, 0.95rem);
   color: #111;
   text-decoration: none;
+}
+
+.metaBlock .metaValue,
+.metaBlock .metaLink {
+  font-size: clamp(0.84rem, 0.9vw, 0.95rem);
+  line-height: 1.45;
 }
 
 .pairedText {
@@ -152,12 +157,22 @@
 
 .primaryLine {
   color: #111;
-  font-size: clamp(0.84rem, 1.12cqw, 0.95rem);
+  font-size: clamp(0.84rem, 0.9vw, 0.95rem);
   line-height: 1.45;
 }
 
 .secondaryLine {
   color: #666;
+  font-size: clamp(0.68rem, 0.92cqw, 0.78rem);
+  line-height: 1.4;
+}
+
+.metaBlock .primaryLine {
+  font-size: clamp(0.84rem, 0.9vw, 0.95rem);
+  line-height: 1.45;
+}
+
+.metaBlock .secondaryLine {
   font-size: clamp(0.68rem, 0.92cqw, 0.78rem);
   line-height: 1.4;
 }
@@ -177,10 +192,11 @@
 .block {
   border-top: 1px solid rgba(0, 0, 0, 0.18);
   padding-top: 0.8rem;
+  container-type: inline-size;
 }
 
 .block h2 {
-  font-size: clamp(0.68rem, 0.98cqw, 0.76rem);
+  font-size: clamp(0.68rem, 0.72vw, 0.76rem);
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.12em;
@@ -240,19 +256,19 @@
 
 .projectRole {
   color: #111;
-  font-size: clamp(0.84rem, 1.12cqw, 0.95rem);
+  font-size: clamp(0.84rem, 0.9vw, 0.95rem);
   line-height: 1.45;
   text-align: right;
 }
 
 .projectItem .primaryLine {
   min-width: 0;
-  white-space: normal;
+  white-space: nowrap;
 }
 
 .projectItem .projectRole {
-  max-width: min(26rem, 42cqw);
-  white-space: normal;
+  max-width: none;
+  white-space: nowrap;
 }
 
 .experienceItem {
@@ -285,6 +301,22 @@
   align-items: flex-end;
 }
 
+@container (max-width: 46rem) {
+  .projectItem .itemTopline {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .projectItem .primaryLine,
+  .projectItem .projectRole {
+    white-space: normal;
+  }
+
+  .projectItem .projectRole {
+    text-align: left;
+  }
+}
+
 @media (max-width: 1280px) {
   .content {
     grid-template-columns: minmax(170px, 220px) minmax(0, 1fr);
@@ -307,7 +339,7 @@
   }
 
   .projectItem .projectRole {
-    max-width: 44vw;
+    max-width: none;
   }
 }
 
