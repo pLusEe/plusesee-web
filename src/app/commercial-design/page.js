@@ -375,7 +375,16 @@ export default function CommercialDesignPage() {
                         );
                       }
 
-                      return <img key={mediaKey} src={src} alt={project.title} className={styles.projectImage} />;
+                      return (
+                        <img
+                          key={mediaKey}
+                          src={src}
+                          alt={project.title}
+                          className={styles.projectImage}
+                          loading={projectIndex === 0 && index === 0 ? "eager" : "lazy"}
+                          decoding="async"
+                        />
+                      );
                     })}
 
                     {project.id === "wechat-ai-ip-motion" ? (

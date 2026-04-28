@@ -233,6 +233,13 @@ export default function PersonalDesignPage() {
   const [currentSpreadStart, setCurrentSpreadStart] = useState(1);
   const normalEase = "cubic-bezier(0.37, 0, 0.63, 1)";
   const fastEase = "cubic-bezier(0.4, 0, 0.2, 1)";
+  const shouldLoadSheet = useCallback(
+    (idx) => {
+      const sheetStartPage = idx * 2 + 1;
+      return idx < 2 || Math.abs(sheetStartPage - currentSpreadStart) <= 6;
+    },
+    [currentSpreadStart]
+  );
 
   const updateZIndexes = useCallback(() => {
     const pageEls = pagesRef.current;
@@ -564,36 +571,61 @@ export default function PersonalDesignPage() {
         <div className={styles.pagesStage}>
           <div className={styles.staticLeftPage} aria-hidden="true">
             {firstLeftPageImage ? (
-              <img src={firstLeftPageImage} alt="" className={styles.pageImage} draggable={false} />
+              <img
+                src={firstLeftPageImage}
+                alt=""
+                className={styles.pageImage}
+                draggable={false}
+                decoding="async"
+              />
             ) : null}
           </div>
           <div ref={bookRef} className={styles.book}>
-            {pages.map((page, idx) => (
-              <div key={`page-${idx}`} className={styles.page} data-index={idx}>
-                <div
-                  className={styles.front}
-                >
-                  <img src={page.front.background} alt="" className={styles.pageImage} draggable={false} />
-                  {(page.front.title || page.front.text) && (
-                    <div className={styles.pageContent}>
-                      {page.front.title && <div className={styles.pageTitle}>{page.front.title}</div>}
-                      {page.front.text && <div className={styles.pageText}>{page.front.text}</div>}
-                    </div>
-                  )}
+            {pages.map((page, idx) => {
+              const loadSheet = shouldLoadSheet(idx);
+              return (
+                <div key={`page-${idx}`} className={styles.page} data-index={idx}>
+                  <div
+                    className={styles.front}
+                  >
+                    {loadSheet ? (
+                      <img
+                        src={page.front.background}
+                        alt=""
+                        className={styles.pageImage}
+                        draggable={false}
+                        loading={idx < 2 ? "eager" : "lazy"}
+                        decoding="async"
+                      />
+                    ) : null}
+                    {(page.front.title || page.front.text) && (
+                      <div className={styles.pageContent}>
+                        {page.front.title && <div className={styles.pageTitle}>{page.front.title}</div>}
+                        {page.front.text && <div className={styles.pageText}>{page.front.text}</div>}
+                      </div>
+                    )}
+                  </div>
+                  <div className={styles.back}>
+                    {loadSheet && page.back.background ? (
+                      <img
+                        src={page.back.background}
+                        alt=""
+                        className={styles.pageImage}
+                        draggable={false}
+                        loading={idx < 2 ? "eager" : "lazy"}
+                        decoding="async"
+                      />
+                    ) : null}
+                    {(page.back.title || page.back.text) && (
+                      <div className={styles.pageContent}>
+                        {page.back.title && <div className={styles.pageTitle}>{page.back.title}</div>}
+                        {page.back.text && <div className={styles.pageText}>{page.back.text}</div>}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className={styles.back}>
-                  {page.back.background ? (
-                    <img src={page.back.background} alt="" className={styles.pageImage} draggable={false} />
-                  ) : null}
-                  {(page.back.title || page.back.text) && (
-                    <div className={styles.pageContent}>
-                      {page.back.title && <div className={styles.pageTitle}>{page.back.title}</div>}
-                      {page.back.text && <div className={styles.pageText}>{page.back.text}</div>}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

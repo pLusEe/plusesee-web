@@ -489,6 +489,8 @@ export default function PersonalDesignLibraryPage() {
                             ? styles.fallImageRotate270
                             : ""
                       }`}
+                      loading="lazy"
+                      decoding="async"
                       draggable={false}
                     />
                   </div>
