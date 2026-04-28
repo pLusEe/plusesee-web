@@ -350,7 +350,7 @@
 
 @media (max-width: 640px) {
   .main {
-    padding-top: clamp(8.2rem, 18svh, 9rem);
+    padding-top: clamp(7.4rem, 16svh, 8.4rem);
   }
 
   .books {
@@ -361,13 +361,18 @@
     --book-width: clamp(158px, 48vw, 188px);
   }
 
+  .coverWrap {
+    height: clamp(15.5rem, 34svh, 18rem);
+    aspect-ratio: auto;
+  }
+
   .bookletCanvas {
     width: 180% !important;
-    height: 108% !important;
+    height: 112% !important;
   }
 
   .info {
-    margin-top: -4.7rem;
+    margin-top: clamp(0.2rem, 1.8svh, 0.9rem);
   }
 
   .metaRow {
