@@ -9,7 +9,7 @@
   width: min(1420px, 92vw);
   margin: 0 auto;
   box-sizing: border-box;
-  padding: 8rem 0 1.4rem;
+  padding: clamp(5.4rem, 10vh, 7.2rem) 0 clamp(1.2rem, 3vh, 1.8rem);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -39,7 +39,7 @@
   gap: 0.14rem;
   text-align: right;
   text-transform: lowercase;
-  font-size: 0.76rem;
+  font-size: clamp(0.64rem, 0.72vw, 0.76rem);
   line-height: 1.25;
   letter-spacing: 0.08em;
   font-weight: 300;
@@ -55,7 +55,7 @@
   bottom: 1rem;
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 0.76rem;
+  font-size: clamp(0.64rem, 0.72vw, 0.76rem);
   line-height: 1.25;
   letter-spacing: 0.08em;
   font-weight: 300;
@@ -66,7 +66,7 @@
 }
 
 .book {
-  --book-width: clamp(200px, 20vw, 260px);
+  --book-width: clamp(178px, 16vw, 224px);
   width: var(--book-width);
   display: flex;
   flex-direction: column;
@@ -98,8 +98,8 @@
   position: absolute;
   left: calc(100% + var(--fall-gap));
   top: 0.2rem;
-  width: clamp(520px, 52vw, 940px);
-  height: clamp(230px, 34vh, 390px);
+  width: clamp(440px, 48vw, 780px);
+  height: clamp(205px, 31vh, 350px);
   pointer-events: none;
   overflow: hidden;
   z-index: 4;
@@ -145,7 +145,7 @@
   display: block;
   text-align: left;
   font-family: var(--font-sans);
-  font-size: 0.65rem;
+  font-size: clamp(0.56rem, 0.58vw, 0.65rem);
   line-height: 1.2;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -214,7 +214,7 @@
 }
 
 .placeholderInner {
-  font-size: 0.75rem;
+  font-size: clamp(0.62rem, 0.7vw, 0.75rem);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(0, 0, 0, 0.48);
@@ -224,14 +224,14 @@
 
 .info {
   width: 100%;
-  margin-top: -8rem;
+  margin-top: calc(clamp(5.4rem, 8.6vw, 7.2rem) * -1);
   padding: 0.1rem 0;
   display: flex;
   flex-direction: column;
 }
 
 .index {
-  font-size: 0.7rem;
+  font-size: clamp(0.58rem, 0.62vw, 0.7rem);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 0.45rem;
@@ -247,7 +247,7 @@
 }
 
 .period {
-  font-size: 0.75rem;
+  font-size: clamp(0.62rem, 0.68vw, 0.75rem);
   letter-spacing: 0.11em;
   text-transform: uppercase;
   color: #444;
@@ -255,7 +255,7 @@
 }
 
 .label {
-  font-size: 0.62rem;
+  font-size: clamp(0.54rem, 0.58vw, 0.62rem);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: #666;
@@ -263,7 +263,7 @@
 }
 
 .description {
-  font-size: 0.7rem;
+  font-size: clamp(0.58rem, 0.62vw, 0.7rem);
   line-height: 1.58;
   text-transform: uppercase;
   margin-bottom: 0.35rem;
@@ -273,8 +273,8 @@
   display: flex;
   justify-content: space-between;
   gap: 0.8rem;
-  padding: 0.34rem 0;
-  font-size: 0.65rem;
+  padding: clamp(0.26rem, 0.36vw, 0.34rem) 0;
+  font-size: clamp(0.56rem, 0.6vw, 0.67rem);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -285,12 +285,12 @@
 
 .openBtn,
 .openDisabled {
-  margin-top: 0.6rem;
+  margin-top: clamp(0.42rem, 0.62vw, 0.6rem);
   align-self: flex-end;
-  font-size: 0.62rem;
+  font-size: clamp(0.54rem, 0.58vw, 0.64rem);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 0.33rem 0.52rem;
+  padding: clamp(0.28rem, 0.34vw, 0.33rem) clamp(0.44rem, 0.54vw, 0.52rem);
 }
 
 .openBtn {
@@ -318,7 +318,7 @@
 
   .main {
     height: auto;
-    padding: 8rem 0 2rem;
+    padding: clamp(6.4rem, 15vh, 8rem) 0 2rem;
     display: block;
   }
 
@@ -329,7 +329,7 @@
   }
 
   .book {
-    --book-width: min(78vw, 210px);
+    --book-width: clamp(178px, 52vw, 210px);
   }
 
   .fallStage {
@@ -351,6 +351,15 @@
   }
 
   .book {
-    --book-width: min(84vw, 250px);
+    --book-width: clamp(176px, 66vw, 225px);
+  }
+
+  .metaRow {
+    font-size: clamp(0.62rem, 2.6vw, 0.72rem);
+  }
+
+  .openBtn,
+  .openDisabled {
+    font-size: clamp(0.6rem, 2.5vw, 0.7rem);
   }
 }
