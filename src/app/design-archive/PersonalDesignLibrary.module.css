@@ -317,9 +317,12 @@
   }
 
   .main {
+    min-height: 100svh;
     height: auto;
     padding: clamp(6.4rem, 15vh, 8rem) 0 2rem;
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
   }
 
   .books {
@@ -346,12 +349,25 @@
 }
 
 @media (max-width: 640px) {
+  .main {
+    padding-top: clamp(8.2rem, 18svh, 9rem);
+  }
+
   .books {
     grid-template-columns: 1fr;
   }
 
   .book {
-    --book-width: clamp(176px, 66vw, 225px);
+    --book-width: clamp(158px, 48vw, 188px);
+  }
+
+  .bookletCanvas {
+    width: 180% !important;
+    height: 108% !important;
+  }
+
+  .info {
+    margin-top: -4.7rem;
   }
 
   .metaRow {
