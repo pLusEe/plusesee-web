@@ -3,54 +3,77 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import styles from "./LoadingScreen.module.css";
 
+const FULL_TEXT = "plusesee";
+const MAX_RING_WAIT_MS = 3000;
+
 export default function LoadingScreen() {
   const pathname = usePathname();
   const [text, setText] = useState("");
   const [isFading, setIsFading] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
-  
-  const fullText = "plusesee";
+  const [typingFinished, setTypingFinished] = useState(false);
+  const [ringReady, setRingReady] = useState(false);
+  const [waitTimedOut, setWaitTimedOut] = useState(false);
 
   useEffect(() => {
-    // Abort and hide immediately if not on the root index
     if (pathname !== "/") {
       setIsFinished(true);
-      return;
+      return undefined;
     }
 
-    // Reset everything in case we just soft-routed back to "/"
     setIsFinished(false);
     setIsFading(false);
     setText("");
+    setTypingFinished(false);
+    setRingReady(false);
+    setWaitTimedOut(false);
 
     let currentIndex = 0;
-    
-    // Slight initial delay before typing starts
+    let typingInterval;
+    let readingDelay;
+
+    const handleRingReady = () => setRingReady(true);
+    window.addEventListener("plusesee:ring-ready", handleRingReady);
+
     const startDelay = setTimeout(() => {
-      const typingInterval = setInterval(() => {
-        setText(fullText.slice(0, currentIndex + 1));
+      typingInterval = setInterval(() => {
+        setText(FULL_TEXT.slice(0, currentIndex + 1));
         currentIndex++;
-        
-        if (currentIndex >= fullText.length) {
+
+        if (currentIndex >= FULL_TEXT.length) {
           clearInterval(typingInterval);
-          
-          // Wait to let users read the full word, then fade out
-          setTimeout(() => {
-            setIsFading(true);
-            
-            // Wait for CSS opacity transition to complete before unmounting
-            setTimeout(() => {
-              setIsFinished(true);
-            }, 400);
+          readingDelay = setTimeout(() => {
+            setTypingFinished(true);
           }, 700);
         }
-      }, 55); // Typing speed per character
-      
-      return () => clearInterval(typingInterval);
+      }, 55);
     }, 200);
 
-    return () => clearTimeout(startDelay);
+    const maxWait = setTimeout(() => setWaitTimedOut(true), MAX_RING_WAIT_MS);
+
+    return () => {
+      window.removeEventListener("plusesee:ring-ready", handleRingReady);
+      clearTimeout(startDelay);
+      clearTimeout(readingDelay);
+      clearTimeout(maxWait);
+      clearInterval(typingInterval);
+    };
   }, [pathname]);
+
+  useEffect(() => {
+    if (
+      pathname !== "/" ||
+      isFinished ||
+      !typingFinished ||
+      (!ringReady && !waitTimedOut)
+    ) {
+      return undefined;
+    }
+
+    setIsFading(true);
+    const finishTimer = setTimeout(() => setIsFinished(true), 400);
+    return () => clearTimeout(finishTimer);
+  }, [isFinished, pathname, ringReady, typingFinished, waitTimedOut]);
 
   if (isFinished || pathname !== "/") return null;
 

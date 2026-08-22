@@ -2,16 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useTexture, Html } from "@react-three/drei";
+import { Html } from "@react-three/drei";
 import * as THREE from "three";
+import ringThumbnailManifest from "../data/ring-thumbnails.json";
 import styles from "./RingCarousel.module.css";
 
-const MIN_ITEMS = 42;
+const TARGET_RING_SLOTS = 45;
+const TEXTURE_LOAD_CONCURRENCY = 4;
 const CAMERA_START = new THREE.Vector3(0, 1.4, 26);
 const LOOK_AT_START = new THREE.Vector3(0, 0.42, 0);
 const GROUP_POSITION = new THREE.Vector3(0, 0.4, 0);
 const MIN_CARD_ASPECT = 0.45;
 const MAX_CARD_ASPECT = 2.2;
+const WHITE_TINT = new THREE.Color(1, 1, 1);
+const DIM_TINT = new THREE.Color(0.7, 0.7, 0.75);
+const PLACEHOLDER_TINT = new THREE.Color(0.88, 0.88, 0.88);
 
 const dampAngle = (current, target, lambda, delta) => {
   const diff = Math.atan2(Math.sin(target - current), Math.cos(target - current));
@@ -118,9 +123,8 @@ const resolveCategoryLabel = (item) => {
 
 const getDisplayItems = (items) => {
   if (!items.length) return [];
-  let next = [...items];
-  while (next.length < MIN_ITEMS) next = [...next, ...items];
-  return next.slice(0, Math.max(MIN_ITEMS, items.length * 3));
+  const slotCount = Math.max(TARGET_RING_SLOTS, items.length);
+  return Array.from({ length: slotCount }, (_, index) => items[index % items.length]);
 };
 
 const clampValue = (value, min, max) => Math.min(max, Math.max(min, value));
@@ -130,6 +134,52 @@ const finalizeTexture = (texture) => {
   texture.anisotropy = 8;
   texture.needsUpdate = true;
   return texture;
+};
+
+const getRingSettings = (item) => ({
+  aspect: clampValue(
+    typeof item?.ringAspect === "number" ? item.ringAspect : 1,
+    MIN_CARD_ASPECT,
+    MAX_CARD_ASPECT
+  ),
+  focusX: clampValue(
+    typeof item?.ringCrop?.focusX === "number" ? item.ringCrop.focusX : 0.5,
+    0,
+    1
+  ),
+  focusY: clampValue(
+    typeof item?.ringCrop?.focusY === "number" ? item.ringCrop.focusY : 0.5,
+    0,
+    1
+  ),
+  zoom: clampValue(
+    typeof item?.ringCrop?.zoom === "number" ? item.ringCrop.zoom : 1,
+    1,
+    3
+  ),
+});
+
+const isSameNumber = (left, right) => Math.abs(Number(left) - Number(right)) < 0.0001;
+
+const getTextureSpec = (item) => {
+  const sourceUrl = getThumb(item);
+  const settings = getRingSettings(item);
+  const generated = ringThumbnailManifest[String(item?.id || "")];
+  const canUseGenerated =
+    generated &&
+    generated.sourceUrl === sourceUrl &&
+    isSameNumber(generated.aspect, settings.aspect) &&
+    isSameNumber(generated.focusX, settings.focusX) &&
+    isSameNumber(generated.focusY, settings.focusY) &&
+    isSameNumber(generated.zoom, settings.zoom);
+
+  const url = canUseGenerated ? generated.url : sourceUrl;
+  const prepared = Boolean(canUseGenerated);
+  const key = prepared
+    ? `generated:${url}`
+    : `source:${url}:${settings.aspect}:${settings.focusX}:${settings.focusY}:${settings.zoom}`;
+
+  return { key, url, prepared, item, aspect: settings.aspect };
 };
 
 const getTargetAspect = (item, sourceAspect) => {
@@ -218,11 +268,104 @@ const prepareTexture = (texture, item) => {
   return finalizeTexture(new THREE.CanvasTexture(canvas));
 };
 
+const useProgressiveTextures = (textureSpecs) => {
+  const [textures, setTextures] = useState(() => new Map());
+
+  useEffect(() => {
+    let cancelled = false;
+    let nextIndex = 0;
+    let activeLoads = 0;
+    const preparationTimers = new Set();
+    const ownedTextures = new Set();
+    const uniqueSpecs = Array.from(
+      new Map(textureSpecs.map((spec) => [spec.key, spec])).values()
+    );
+    const loader = new THREE.TextureLoader();
+
+    const resetTimer = window.setTimeout(() => {
+      if (!cancelled) setTextures(new Map());
+    }, 0);
+    preparationTimers.add(resetTimer);
+
+    const publishTexture = (spec, texture) => {
+      if (cancelled) {
+        texture.dispose();
+        return;
+      }
+
+      ownedTextures.add(texture);
+      setTextures((current) => {
+        const next = new Map(current);
+        next.set(spec.key, texture);
+        return next;
+      });
+    };
+
+    const loadNext = () => {
+      if (cancelled) return;
+
+      while (activeLoads < TEXTURE_LOAD_CONCURRENCY && nextIndex < uniqueSpecs.length) {
+        const spec = uniqueSpecs[nextIndex];
+        nextIndex += 1;
+        activeLoads += 1;
+
+        loader.load(
+          spec.url,
+          (loadedTexture) => {
+            const timer = window.setTimeout(() => {
+              preparationTimers.delete(timer);
+
+              if (cancelled) {
+                loadedTexture.dispose();
+              } else {
+                try {
+                  if (spec.prepared) {
+                    publishTexture(spec, finalizeTexture(loadedTexture));
+                  } else {
+                    const preparedTexture = prepareTexture(loadedTexture, spec.item);
+                    loadedTexture.dispose();
+                    publishTexture(spec, preparedTexture);
+                  }
+                } catch (error) {
+                  loadedTexture.dispose();
+                  console.warn(`[ring] Could not prepare texture: ${spec.url}`, error);
+                }
+              }
+
+              activeLoads -= 1;
+              loadNext();
+            }, 0);
+
+            preparationTimers.add(timer);
+          },
+          undefined,
+          (error) => {
+            console.warn(`[ring] Could not load texture: ${spec.url}`, error);
+            activeLoads -= 1;
+            loadNext();
+          }
+        );
+      }
+    };
+
+    loadNext();
+
+    return () => {
+      cancelled = true;
+      preparationTimers.forEach((timer) => window.clearTimeout(timer));
+      ownedTextures.forEach((texture) => texture.dispose());
+    };
+  }, [textureSpecs]);
+
+  return textures;
+};
+
 const angularDelta = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
 function Card({
   index,
   texture,
+  targetAspect,
   angle,
   radius,
   selected,
@@ -241,6 +384,16 @@ function Card({
   const targetScale = useRef(new THREE.Vector3(1, 1, 1));
   const parentQuaternion = useRef(new THREE.Quaternion());
   const desiredQuaternion = useRef(new THREE.Quaternion());
+
+  useEffect(() => {
+    const material = materialRef.current;
+    if (!material) return;
+
+    material.map = texture || null;
+    material.opacity = texture ? 0 : 0.025;
+    material.color.copy(texture ? WHITE_TINT : PLACEHOLDER_TINT);
+    material.needsUpdate = true;
+  }, [texture]);
 
   useFrame((_, delta) => {
     const mesh = groupRef.current;
@@ -267,7 +420,7 @@ function Card({
       
       tScale = selected ? 1.06 : 0.5;
       tOpacity = selected ? 1 : 0.15;
-      tTint = selected ? new THREE.Color("#ffffff") : new THREE.Color(0.7, 0.7, 0.75);
+      tTint = selected ? WHITE_TINT : DIM_TINT;
     } else {
       // Dynamic overview layout, front cards bloom and scale up
       tY = (frontness - 0.5) * 0.18;
@@ -275,11 +428,16 @@ function Card({
       
       tScale = 0.76 + frontness * 0.82;
       tOpacity = 0.36 + frontness * 0.46;
-      tTint = new THREE.Color(1, 1, 1);
+      tTint = WHITE_TINT;
     }
-    
+
+    if (!texture) {
+      tOpacity = selectedMode && selected ? 0.1 : 0.045;
+      tTint = PLACEHOLDER_TINT;
+    }
+
     const hoverActive = hovered && !selectedMode;
-    if (hoverActive) {
+    if (hoverActive && texture) {
       tOpacity = Math.max(tOpacity, 0.98);
     }
 
@@ -318,12 +476,11 @@ function Card({
     }
   });
 
-  // Calculate the native aspect ratio of the loaded image so it never stretches
-  const aspect = texture?.image && texture.image.width && texture.image.height
+  const cardAspect = texture?.image && texture.image.width && texture.image.height
     ? texture.image.width / texture.image.height
-    : 1.06 / 0.66;
-  
-  const cardWidth = 0.68 * aspect;
+    : targetAspect;
+
+  const cardWidth = 0.68 * cardAspect;
   const cardHeight = 0.68;
   const hitboxWidth = cardHeight * 1.35;
   const hitboxHeight = cardHeight * 1.75;
@@ -368,11 +525,11 @@ function Card({
         <planeGeometry args={[cardWidth, cardHeight]} />
         <meshBasicMaterial
           ref={materialRef}
-          map={texture}
+          map={texture || null}
           transparent
           toneMapped={false}
-          opacity={0.72}
-          color={new THREE.Color("#ffffff")}
+          opacity={texture ? 0 : 0.025}
+          color={texture ? "#ffffff" : "#e0e0e0"}
           side={THREE.DoubleSide}
           depthWrite={false}
         />
@@ -464,22 +621,34 @@ function RingScene({
   onActionHover,
 }) {
   const groupRef = useRef(null);
-  const textures = useTexture(displayItems.map(getThumb));
+  const textureSpecs = useMemo(() => displayItems.map(getTextureSpec), [displayItems]);
+  const textures = useProgressiveTextures(textureSpecs);
+  const textureSignature = useMemo(
+    () => textureSpecs.map((spec) => spec.key).join("|"),
+    [textureSpecs]
+  );
+  const hasAnyTexture = textures.size > 0;
+  const readySignatureRef = useRef("");
   const { viewport, pointer } = useThree();
   const groupScale = useRef(new THREE.Vector3(1, 1, 1));
   const swayRef = useRef(0);
-  const previousSelectedRef = useRef(null);
-  const preparedTextures = useMemo(
-    () => displayItems.map((item, index) => prepareTexture(textures[index], item)),
-    [displayItems, textures]
-  );
 
-  useEffect(
-    () => () => {
-      preparedTextures.forEach((texture) => texture.dispose());
-    },
-    [preparedTextures]
-  );
+  useEffect(() => {
+    if (!hasAnyTexture || readySignatureRef.current === textureSignature) return undefined;
+
+    let secondFrame;
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        readySignatureRef.current = textureSignature;
+        window.dispatchEvent(new CustomEvent("plusesee:ring-ready"));
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [hasAnyTexture, textureSignature]);
 
   const radius = Math.min(viewport.width, viewport.height) * 0.66;
   const count = displayItems.length;
@@ -488,8 +657,6 @@ function RingScene({
       ? null
       : (selectedIndex / count) * Math.PI * 2;
   const sceneRotationTarget = selectedAngle === null ? rotationTarget : -selectedAngle;
-
-  const activeLayoutY = selectedIndex !== null ? 0 : 0; // The rigid focus Y math was already flattened
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
@@ -517,30 +684,33 @@ function RingScene({
     groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, groupScale.current.x, selectedMode ? 10.5 : 3.4, delta);
     groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, groupScale.current.y, selectedMode ? 10.5 : 3.4, delta);
     groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, groupScale.current.z, selectedMode ? 10.5 : 3.4, delta);
-    previousSelectedRef.current = selectedIndex;
   });
 
   return (
     <>
       <CameraRig focusActive={selectedIndex !== null} radius={radius} />
       <group ref={groupRef} position={GROUP_POSITION.toArray()}>
-        {displayItems.map((item, index) => (
-          <Card
-            key={`${item.id}-${index}`}
-            index={index}
-            texture={preparedTextures[index]}
-            angle={(index / count) * Math.PI * 2}
-            radius={radius}
-            selected={selectedIndex === index}
-            hovered={hoveredIndex === index}
-            selectedMode={selectedIndex !== null}
-            label={resolveCategoryLabel(item)}
-            title={item.title}
-            onSelect={onSelect}
-            onHover={onHover}
-            onActionHover={onActionHover}
-          />
-        ))}
+        {displayItems.map((item, index) => {
+          const textureSpec = textureSpecs[index];
+          return (
+            <Card
+              key={`${item.id}-${index}`}
+              index={index}
+              texture={textures.get(textureSpec.key) || null}
+              targetAspect={textureSpec.aspect}
+              angle={(index / count) * Math.PI * 2}
+              radius={radius}
+              selected={selectedIndex === index}
+              hovered={hoveredIndex === index}
+              selectedMode={selectedIndex !== null}
+              label={resolveCategoryLabel(item)}
+              title={item.title}
+              onSelect={onSelect}
+              onHover={onHover}
+              onActionHover={onActionHover}
+            />
+          );
+        })}
       </group>
     </>
   );
@@ -607,7 +777,7 @@ export default function RingCarousel({ items }) {
 
     scene.addEventListener("wheel", handleWheel, { passive: false });
     return () => scene.removeEventListener("wheel", handleWheel);
-  }, [selectedIndex]);
+  }, [displayItems.length, selectedIndex]);
 
   useEffect(() => {
     const scene = sceneRef.current;
