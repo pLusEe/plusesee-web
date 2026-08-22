@@ -3,7 +3,7 @@
   display: block;
   overflow: hidden;
   isolation: isolate;
-  background: #f5f5f2;
+  background: #ffffff;
 }
 
 .fill {
@@ -15,7 +15,7 @@
   position: absolute;
   inset: -10px;
   z-index: 1;
-  background-color: #f5f5f2;
+  background-color: #ffffff;
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
