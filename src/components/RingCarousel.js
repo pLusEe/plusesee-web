@@ -9,6 +9,9 @@ import styles from "./RingCarousel.module.css";
 
 const TARGET_RING_SLOTS = 45;
 const TEXTURE_LOAD_CONCURRENCY = 4;
+const MAX_DECODED_RING_IMAGES = 30;
+const RING_IMAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+const decodedRingImageCache = new Map();
 const CAMERA_START = new THREE.Vector3(0, 1.4, 26);
 const LOOK_AT_START = new THREE.Vector3(0, 0.42, 0);
 const GROUP_POSITION = new THREE.Vector3(0, 0.4, 0);
@@ -135,6 +138,31 @@ const finalizeTexture = (texture) => {
   texture.needsUpdate = true;
   return texture;
 };
+
+const pruneDecodedRingImageCache = () => {
+  const now = Date.now();
+  decodedRingImageCache.forEach((entry, key) => {
+    if (now - entry.lastUsed > RING_IMAGE_CACHE_TTL_MS) {
+      decodedRingImageCache.delete(key);
+    }
+  });
+
+  if (decodedRingImageCache.size <= MAX_DECODED_RING_IMAGES) return;
+  const oldestEntries = Array.from(decodedRingImageCache.entries()).sort(
+    (left, right) => left[1].lastUsed - right[1].lastUsed
+  );
+  oldestEntries
+    .slice(0, decodedRingImageCache.size - MAX_DECODED_RING_IMAGES)
+    .forEach(([key]) => decodedRingImageCache.delete(key));
+};
+
+const cacheDecodedRingImage = (key, image) => {
+  if (!image) return;
+  decodedRingImageCache.set(key, { image, lastUsed: Date.now() });
+  pruneDecodedRingImageCache();
+};
+
+const createTextureFromCachedImage = (image) => finalizeTexture(new THREE.Texture(image));
 
 const getRingSettings = (item) => ({
   aspect: clampValue(
@@ -280,10 +308,21 @@ const useProgressiveTextures = (textureSpecs) => {
     const uniqueSpecs = Array.from(
       new Map(textureSpecs.map((spec) => [spec.key, spec])).values()
     );
+    pruneDecodedRingImageCache();
+    const cachedTextures = new Map();
+    uniqueSpecs.forEach((spec) => {
+      const cached = decodedRingImageCache.get(spec.key);
+      if (!cached) return;
+      cached.lastUsed = Date.now();
+      const texture = createTextureFromCachedImage(cached.image);
+      ownedTextures.add(texture);
+      cachedTextures.set(spec.key, texture);
+    });
+    const pendingSpecs = uniqueSpecs.filter((spec) => !cachedTextures.has(spec.key));
     const loader = new THREE.TextureLoader();
 
     const resetTimer = window.setTimeout(() => {
-      if (!cancelled) setTextures(new Map());
+      if (!cancelled) setTextures(cachedTextures);
     }, 0);
     preparationTimers.add(resetTimer);
 
@@ -294,6 +333,7 @@ const useProgressiveTextures = (textureSpecs) => {
       }
 
       ownedTextures.add(texture);
+      cacheDecodedRingImage(spec.key, texture.image);
       setTextures((current) => {
         const next = new Map(current);
         next.set(spec.key, texture);
@@ -304,8 +344,8 @@ const useProgressiveTextures = (textureSpecs) => {
     const loadNext = () => {
       if (cancelled) return;
 
-      while (activeLoads < TEXTURE_LOAD_CONCURRENCY && nextIndex < uniqueSpecs.length) {
-        const spec = uniqueSpecs[nextIndex];
+      while (activeLoads < TEXTURE_LOAD_CONCURRENCY && nextIndex < pendingSpecs.length) {
+        const spec = pendingSpecs[nextIndex];
         nextIndex += 1;
         activeLoads += 1;
 

@@ -19,6 +19,7 @@
 
 # production
 /build
+/public/media/display-assets/
 
 # misc
 .DS_Store

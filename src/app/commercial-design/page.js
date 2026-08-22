@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import ProgressiveImage from "../../components/ProgressiveImage";
 import styles from "./CommercialDesign.module.css";
 
 const isVideoUrl = (url) => /\.(mp4|webm|mov|m4v|ogg)$/i.test(String(url || "").trim());
@@ -375,14 +376,17 @@ export default function CommercialDesignPage() {
                         );
                       }
 
+                      const isFirstImage = projectIndex === 0 && index === 0;
                       return (
-                        <img
+                        <ProgressiveImage
                           key={mediaKey}
                           src={src}
                           alt={project.title}
-                          className={styles.projectImage}
-                          loading={projectIndex === 0 && index === 0 ? "eager" : "lazy"}
-                          decoding="async"
+                          frameClassName={styles.projectImageFrame}
+                          imageClassName={styles.projectImage}
+                          loading={isFirstImage ? "eager" : "lazy"}
+                          fetchPriority={isFirstImage ? "high" : "auto"}
+                          sizes="(max-width: 1180px) 68vw, 77vw"
                         />
                       );
                     })}

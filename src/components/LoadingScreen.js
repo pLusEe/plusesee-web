@@ -5,6 +5,24 @@ import styles from "./LoadingScreen.module.css";
 
 const FULL_TEXT = "plusesee";
 const MAX_RING_WAIT_MS = 3000;
+const HOME_INTRO_SESSION_KEY = "plusesee:home-intro-completed";
+let homeIntroCompleted = false;
+
+const hasCompletedHomeIntro = () => {
+  if (homeIntroCompleted) return true;
+  try {
+    return window.sessionStorage.getItem(HOME_INTRO_SESSION_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
+const markHomeIntroCompleted = () => {
+  homeIntroCompleted = true;
+  try {
+    window.sessionStorage.setItem(HOME_INTRO_SESSION_KEY, "1");
+  } catch {}
+};
 
 export default function LoadingScreen() {
   const pathname = usePathname();
@@ -17,6 +35,11 @@ export default function LoadingScreen() {
 
   useEffect(() => {
     if (pathname !== "/") {
+      setIsFinished(true);
+      return undefined;
+    }
+
+    if (hasCompletedHomeIntro()) {
       setIsFinished(true);
       return undefined;
     }
@@ -71,7 +94,10 @@ export default function LoadingScreen() {
     }
 
     setIsFading(true);
-    const finishTimer = setTimeout(() => setIsFinished(true), 400);
+    const finishTimer = setTimeout(() => {
+      markHomeIntroCompleted();
+      setIsFinished(true);
+    }, 400);
     return () => clearTimeout(finishTimer);
   }, [isFinished, pathname, ringReady, typingFinished, waitTimedOut]);
 

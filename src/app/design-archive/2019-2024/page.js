@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ProgressiveImage from "../../../components/ProgressiveImage";
 import styles from "../PersonalDesign.module.css";
 import defaultSiteContent from "../../../data/site-content.json";
 
@@ -571,12 +572,17 @@ export default function PersonalDesignPage() {
         <div className={styles.pagesStage}>
           <div className={styles.staticLeftPage} aria-hidden="true">
             {firstLeftPageImage ? (
-              <img
+              <ProgressiveImage
                 src={firstLeftPageImage}
                 alt=""
-                className={styles.pageImage}
+                fill
+                frameClassName={styles.pageImageFrame}
+                imageClassName={styles.pageImage}
                 draggable={false}
-                decoding="async"
+                loading="eager"
+                fetchPriority="high"
+                sizes="40vw"
+                ariaHidden
               />
             ) : null}
           </div>
@@ -589,13 +595,17 @@ export default function PersonalDesignPage() {
                     className={styles.front}
                   >
                     {loadSheet ? (
-                      <img
+                      <ProgressiveImage
                         src={page.front.background}
                         alt=""
-                        className={styles.pageImage}
+                        fill
+                        frameClassName={styles.pageImageFrame}
+                        imageClassName={styles.pageImage}
                         draggable={false}
                         loading={idx < 2 ? "eager" : "lazy"}
-                        decoding="async"
+                        fetchPriority={idx < 2 ? "high" : "auto"}
+                        sizes="40vw"
+                        ariaHidden
                       />
                     ) : null}
                     {(page.front.title || page.front.text) && (
@@ -607,13 +617,17 @@ export default function PersonalDesignPage() {
                   </div>
                   <div className={styles.back}>
                     {loadSheet && page.back.background ? (
-                      <img
+                      <ProgressiveImage
                         src={page.back.background}
                         alt=""
-                        className={styles.pageImage}
+                        fill
+                        frameClassName={styles.pageImageFrame}
+                        imageClassName={styles.pageImage}
                         draggable={false}
                         loading={idx < 2 ? "eager" : "lazy"}
-                        decoding="async"
+                        fetchPriority={idx < 2 ? "high" : "auto"}
+                        sizes="40vw"
+                        ariaHidden
                       />
                     ) : null}
                     {(page.back.title || page.back.text) && (

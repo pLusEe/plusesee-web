@@ -34,6 +34,31 @@ const ARCHIVE_COVER_ASPECT = 867 / 1812;
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+function PlaceholderBook() {
+  return (
+    <group rotation={[-0.03, 0.08, 0]} scale={[0.68, 0.68, 0.68]}>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[1.62 * ARCHIVE_COVER_ASPECT, 1.62, 0.04]} />
+        <meshStandardMaterial
+          color="#f1f1ef"
+          roughness={0.9}
+          metalness={0}
+          emissive="#ffffff"
+          emissiveIntensity={0.08}
+        />
+      </mesh>
+      <mesh position={[0, 0, -0.008]} castShadow receiveShadow>
+        <boxGeometry args={[1.54 * ARCHIVE_COVER_ASPECT, 1.54, 0.022]} />
+        <meshStandardMaterial color="#f7f7f5" roughness={0.94} metalness={0} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.02, 0]} receiveShadow>
+        <planeGeometry args={[2.4, 2.4]} />
+        <shadowMaterial opacity={0.08} />
+      </mesh>
+    </group>
+  );
+}
+
 function RotatingBook({ coverUrl }) {
   const groupRef = useRef(null);
   const safeCoverUrl = useMemo(() => normalizeImageUrl(coverUrl, DEFAULT_BOOK_COVER), [coverUrl]);
@@ -130,7 +155,7 @@ function BookletCanvas({ coverUrl }) {
       <directionalLight position={[-3, 2.5, 2.5]} intensity={0.62} />
       <directionalLight position={[0.4, 1.8, -2.4]} intensity={0.24} />
       <spotLight position={[0.25, 0.45, 3.1]} intensity={1.45} angle={0.44} penumbra={0.75} distance={8} />
-      <Suspense fallback={null}>
+      <Suspense fallback={<PlaceholderBook />}>
         <RotatingBook coverUrl={coverUrl} />
       </Suspense>
     </Canvas>

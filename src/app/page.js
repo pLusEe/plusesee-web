@@ -17,6 +17,43 @@ const LEGACY_CATEGORY_TO_TAGS = {
   bio: ["bio"],
 };
 
+let cachedPortfolioItems = null;
+let cachedHomeContent = null;
+let portfolioRequest = null;
+let homeContentRequest = null;
+
+const loadPortfolioItems = () => {
+  if (cachedPortfolioItems) return Promise.resolve(cachedPortfolioItems);
+  if (!portfolioRequest) {
+    portfolioRequest = fetch("/api/portfolio")
+      .then((response) => response.json())
+      .then((data) => {
+        cachedPortfolioItems = Array.isArray(data) ? data : [];
+        return cachedPortfolioItems;
+      })
+      .finally(() => {
+        portfolioRequest = null;
+      });
+  }
+  return portfolioRequest;
+};
+
+const loadHomeContent = () => {
+  if (cachedHomeContent) return Promise.resolve(cachedHomeContent);
+  if (!homeContentRequest) {
+    homeContentRequest = fetch("/api/content")
+      .then((response) => response.json())
+      .then((data) => {
+        cachedHomeContent = data && typeof data === "object" ? data : defaultSiteContent;
+        return cachedHomeContent;
+      })
+      .finally(() => {
+        homeContentRequest = null;
+      });
+  }
+  return homeContentRequest;
+};
+
 const normalizeTags = (rawCategories, rawCategory) => {
   const source = [];
   if (Array.isArray(rawCategories)) source.push(...rawCategories);
@@ -35,23 +72,31 @@ const normalizeTags = (rawCategories, rawCategory) => {
 };
 
 export default function Home() {
-  const [items, setItems] = useState([]);
-  const [content, setContent] = useState(defaultSiteContent);
+  const [items, setItems] = useState(() => cachedPortfolioItems || []);
+  const [content, setContent] = useState(() => cachedHomeContent || defaultSiteContent);
 
   useEffect(() => {
-    fetch("/api/portfolio")
-      .then((r) => r.json())
-      .then((data) => setItems(Array.isArray(data) ? data : []))
-      .catch(console.error);
+    let active = true;
 
-    fetch("/api/content")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data && typeof data === "object") {
-          setContent(data);
-        }
-      })
-      .catch(() => {});
+    if (!cachedPortfolioItems) {
+      loadPortfolioItems()
+        .then((data) => {
+          if (active) setItems(data);
+        })
+        .catch(console.error);
+    }
+
+    if (!cachedHomeContent) {
+      loadHomeContent()
+        .then((data) => {
+          if (active) setContent(data);
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   const ringItems = useMemo(() => {
