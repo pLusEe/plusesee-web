@@ -302,7 +302,7 @@ const requestCloudflare = async ({ messages, systemPrompt }) => {
         Authorization: `Bearer ${apiToken}`,
       },
       body: JSON.stringify({
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
+        messages: [{ role: "system", content: `${systemPrompt}\n/no_think` }, ...messages],
         stream: false,
         max_tokens: MAX_OUTPUT_TOKENS,
         temperature: 0.6,
