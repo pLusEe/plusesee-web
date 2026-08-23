@@ -97,6 +97,7 @@ export default function LoadingScreen() {
     const finishTimer = setTimeout(() => {
       markHomeIntroCompleted();
       setIsFinished(true);
+      window.dispatchEvent(new CustomEvent("plusesee:home-intro-finished"));
     }, 400);
     return () => clearTimeout(finishTimer);
   }, [isFinished, pathname, ringReady, typingFinished, waitTimedOut]);

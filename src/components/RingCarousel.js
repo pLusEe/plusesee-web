@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
@@ -11,6 +11,11 @@ const TARGET_RING_SLOTS = 45;
 const TEXTURE_LOAD_CONCURRENCY = 4;
 const MAX_DECODED_RING_IMAGES = 30;
 const RING_IMAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+const RING_FORMATION_DURATION_SECONDS = 3.4;
+const HOME_INTRO_SESSION_KEY = "plusesee:home-intro-completed";
+const RING_FORMATION_SESSION_KEY = "plusesee:ring-formation-completed";
+const RING_CORNER_RADIUS_RATIO = 0.045;
+const HOVER_NEIGHBOR_INFLUENCE = [1, 0.52, 0.22, 0.08];
 const decodedRingImageCache = new Map();
 const CAMERA_START = new THREE.Vector3(0, 1.4, 26);
 const LOOK_AT_START = new THREE.Vector3(0, 0.42, 0);
@@ -24,6 +29,21 @@ const PLACEHOLDER_TINT = new THREE.Color(0.88, 0.88, 0.88);
 const dampAngle = (current, target, lambda, delta) => {
   const diff = Math.atan2(Math.sin(target - current), Math.cos(target - current));
   return THREE.MathUtils.damp(current, current + diff, lambda, delta);
+};
+
+const smoothstep = (start, end, value) => {
+  const progress = THREE.MathUtils.clamp((value - start) / (end - start), 0, 1);
+  return progress * progress * (3 - 2 * progress);
+};
+
+const seededUnit = (index, offset) => {
+  const value = Math.sin(index * 127.1 + offset * 311.7) * 43758.5453;
+  return value - Math.floor(value);
+};
+
+const getCircularIndexDistance = (left, right, count) => {
+  const direct = Math.abs(left - right);
+  return Math.min(direct, count - direct);
 };
 
 const getThumb = (item) => {
@@ -271,9 +291,6 @@ const prepareTexture = (texture, item) => {
     1,
     3
   );
-  if (Math.abs(sourceAspect - targetAspect) < 0.02 && zoom <= 1.001) {
-    return finalizeTexture(texture.clone());
-  }
   const { x, y, cropWidth, cropHeight } = getCropRect(
     source.width,
     source.height,
@@ -292,6 +309,10 @@ const prepareTexture = (texture, item) => {
     return finalizeTexture(texture.clone());
   }
 
+  const cornerRadius = Math.max(2, Math.min(cropWidth, cropHeight) * RING_CORNER_RADIUS_RATIO);
+  context.beginPath();
+  context.roundRect(0, 0, cropWidth, cropHeight, cornerRadius);
+  context.clip();
   context.drawImage(source, x, y, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
   return finalizeTexture(new THREE.CanvasTexture(canvas));
 };
@@ -359,13 +380,15 @@ const useProgressiveTextures = (textureSpecs) => {
                 loadedTexture.dispose();
               } else {
                 try {
-                  if (spec.prepared) {
-                    publishTexture(spec, finalizeTexture(loadedTexture));
-                  } else {
-                    const preparedTexture = prepareTexture(loadedTexture, spec.item);
-                    loadedTexture.dispose();
-                    publishTexture(spec, preparedTexture);
-                  }
+                  const textureItem = spec.prepared
+                    ? {
+                        ringAspect: spec.aspect,
+                        ringCrop: { focusX: 0.5, focusY: 0.5, zoom: 1 },
+                      }
+                    : spec.item;
+                  const preparedTexture = prepareTexture(loadedTexture, textureItem);
+                  loadedTexture.dispose();
+                  publishTexture(spec, preparedTexture);
                 } catch (error) {
                   loadedTexture.dispose();
                   console.warn(`[ring] Could not prepare texture: ${spec.url}`, error);
@@ -409,8 +432,10 @@ function Card({
   angle,
   radius,
   selected,
-  hovered,
+  hoverInfluence,
   selectedMode,
+  introProgressRef,
+  introLayout,
   label,
   title,
   onSelect,
@@ -476,12 +501,43 @@ function Card({
       tTint = PLACEHOLDER_TINT;
     }
 
-    const hoverActive = hovered && !selectedMode;
-    if (hoverActive && texture) {
-      tOpacity = Math.max(tOpacity, 0.98);
+    const introProgress = introProgressRef.current;
+    const toLineProgress = smoothstep(0.04, 0.34, introProgress);
+    const toRingProgress = smoothstep(0.4, 0.84, introProgress);
+    const revealDelay = (index / Math.max(1, introLayout.count - 1)) * 0.12;
+    const revealProgress = smoothstep(revealDelay, revealDelay + 0.18, introProgress);
+
+    if (introProgress < 0.999) {
+      const scatterX = THREE.MathUtils.lerp(
+        introLayout.scatterX,
+        introLayout.lineX,
+        toLineProgress
+      );
+      const scatterY = THREE.MathUtils.lerp(
+        introLayout.scatterY,
+        introLayout.lineY,
+        toLineProgress
+      );
+      const scatterZ = THREE.MathUtils.lerp(
+        introLayout.scatterZ,
+        introLayout.lineZ,
+        toLineProgress
+      );
+
+      targetVector.current.set(
+        THREE.MathUtils.lerp(scatterX, targetVector.current.x, toRingProgress),
+        THREE.MathUtils.lerp(scatterY, targetVector.current.y, toRingProgress),
+        THREE.MathUtils.lerp(scatterZ, targetVector.current.z, toRingProgress)
+      );
+      tOpacity *= revealProgress;
     }
 
-    const hoverBoost = hoverActive ? 1.12 : 1;
+    const hoverActive = hoverInfluence > 0 && !selectedMode && introProgress >= 0.999;
+    if (hoverActive && texture) {
+      tOpacity = Math.max(tOpacity, 0.82 + hoverInfluence * 0.16);
+    }
+
+    const hoverBoost = hoverActive ? 1 + hoverInfluence * 0.12 : 1;
     tScale *= hoverBoost;
     targetScale.current.setScalar(tScale);
 
@@ -504,9 +560,30 @@ function Card({
       mesh.parent.getWorldQuaternion(parentQuaternion.current);
       desiredQuaternion.current.copy(parentQuaternion.current).invert().multiply(camera.quaternion);
       mesh.quaternion.slerp(desiredQuaternion.current, 1 - Math.exp(-8.5 * delta));
+    } else if (introProgress < 0.999 && mesh.parent) {
+      const faceCameraY = -mesh.parent.rotation.y;
+      const ringRotationY = angle + Math.PI / 2;
+      const introRotationY = faceCameraY + angularDelta(ringRotationY, faceCameraY) * toRingProgress;
+      mesh.rotation.x = THREE.MathUtils.damp(
+        mesh.rotation.x,
+        introLayout.scatterRotationX * (1 - toLineProgress),
+        8,
+        delta
+      );
+      mesh.rotation.y = dampAngle(mesh.rotation.y, introRotationY, 8.5, delta);
+      mesh.rotation.z = THREE.MathUtils.damp(
+        mesh.rotation.z,
+        introLayout.scatterRotationZ * (1 - toLineProgress),
+        8,
+        delta
+      );
     } else if (hoverActive && mesh.parent) {
+      const faceCameraY = -mesh.parent.rotation.y;
+      const ringRotationY = angle + Math.PI / 2;
+      const influencedRotationY =
+        ringRotationY + angularDelta(faceCameraY, ringRotationY) * hoverInfluence;
       mesh.rotation.x = THREE.MathUtils.damp(mesh.rotation.x, 0, 7, delta);
-      mesh.rotation.y = dampAngle(mesh.rotation.y, -mesh.parent.rotation.y, 8.5, delta);
+      mesh.rotation.y = dampAngle(mesh.rotation.y, influencedRotationY, 8.5, delta);
       mesh.rotation.z = THREE.MathUtils.damp(mesh.rotation.z, 0, 7, delta);
     } else {
       targetRotY = angle + Math.PI / 2;
@@ -656,9 +733,12 @@ function RingScene({
   selectedIndex,
   hoveredIndex,
   rotationTarget,
+  introMode,
   onHover,
   onSelect,
   onActionHover,
+  onReady,
+  onIntroComplete,
 }) {
   const groupRef = useRef(null);
   const textureSpecs = useMemo(() => displayItems.map(getTextureSpec), [displayItems]);
@@ -672,6 +752,21 @@ function RingScene({
   const { viewport, pointer } = useThree();
   const groupScale = useRef(new THREE.Vector3(1, 1, 1));
   const swayRef = useRef(0);
+  const introProgressRef = useRef(introMode === "skip" ? 1 : 0);
+  const introCompletionSentRef = useRef(introMode === "skip");
+
+  useEffect(() => {
+    if (introMode === "skip") {
+      introProgressRef.current = 1;
+      introCompletionSentRef.current = true;
+      return;
+    }
+
+    if (introMode === "play") {
+      introProgressRef.current = 0;
+      introCompletionSentRef.current = false;
+    }
+  }, [introMode]);
 
   useEffect(() => {
     if (!hasAnyTexture || readySignatureRef.current === textureSignature) return undefined;
@@ -681,6 +776,7 @@ function RingScene({
       secondFrame = window.requestAnimationFrame(() => {
         readySignatureRef.current = textureSignature;
         window.dispatchEvent(new CustomEvent("plusesee:ring-ready"));
+        onReady();
       });
     });
 
@@ -688,10 +784,12 @@ function RingScene({
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
-  }, [hasAnyTexture, textureSignature]);
+  }, [hasAnyTexture, onReady, textureSignature]);
 
   const radius = Math.min(viewport.width, viewport.height) * 0.66;
   const count = displayItems.length;
+  const lineSpan = Math.min(viewport.width * 0.84, Math.max(5.2, count * 0.22));
+  const lineZ = radius * 0.62;
   const selectedAngle =
     selectedIndex === null || count === 0
       ? null
@@ -700,6 +798,19 @@ function RingScene({
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
+    if (introMode === "play" && introProgressRef.current < 1) {
+      introProgressRef.current = Math.min(
+        1,
+        introProgressRef.current + delta / RING_FORMATION_DURATION_SECONDS
+      );
+      if (introProgressRef.current >= 1 && !introCompletionSentRef.current) {
+        introCompletionSentRef.current = true;
+        onIntroComplete();
+      }
+    }
+
+    const introProgress = introProgressRef.current;
+    const introSettleProgress = smoothstep(0.72, 1, introProgress);
     const selectedMode = selectedIndex !== null;
     const targetX = selectedIndex === null ? 0.15 + pointer.y * 0.05 : 0;
     const targetScale = selectedMode ? 1.22 : 1;
@@ -714,16 +825,29 @@ function RingScene({
     diff = Math.atan2(Math.sin(diff), Math.cos(diff));
     const targetGroupY = groupRef.current.rotation.y + diff;
 
+    const animatedGroupY = THREE.MathUtils.lerp(-0.28, targetGroupY + swayRef.current, introSettleProgress);
     groupRef.current.rotation.y = THREE.MathUtils.damp(
       groupRef.current.rotation.y,
-      targetGroupY + swayRef.current,
+      introProgress < 0.999 ? animatedGroupY : targetGroupY + swayRef.current,
       selectedMode ? 10.5 : 4.2,
       delta
     );
-    groupRef.current.rotation.x = THREE.MathUtils.damp(groupRef.current.rotation.x, targetX, 4.6, delta);
-    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, groupScale.current.x, selectedMode ? 10.5 : 3.4, delta);
-    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, groupScale.current.y, selectedMode ? 10.5 : 3.4, delta);
-    groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, groupScale.current.z, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.rotation.x = THREE.MathUtils.damp(
+      groupRef.current.rotation.x,
+      introProgress < 0.999 ? targetX * introSettleProgress : targetX,
+      4.6,
+      delta
+    );
+    const introScale = THREE.MathUtils.lerp(0.86, groupScale.current.x, introSettleProgress);
+    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, introScale, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, introScale, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, introScale, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.position.y = THREE.MathUtils.damp(
+      groupRef.current.position.y,
+      GROUP_POSITION.y + THREE.MathUtils.lerp(-0.42, 0, introSettleProgress),
+      5.2,
+      delta
+    );
   });
 
   return (
@@ -732,6 +856,21 @@ function RingScene({
       <group ref={groupRef} position={GROUP_POSITION.toArray()}>
         {displayItems.map((item, index) => {
           const textureSpec = textureSpecs[index];
+          const normalizedIndex = count > 1 ? index / (count - 1) : 0.5;
+          const neighborDistance =
+            hoveredIndex === null ? Number.POSITIVE_INFINITY : getCircularIndexDistance(index, hoveredIndex, count);
+          const hoverInfluence = HOVER_NEIGHBOR_INFLUENCE[neighborDistance] || 0;
+          const introLayout = {
+            count,
+            lineX: THREE.MathUtils.lerp(-lineSpan / 2, lineSpan / 2, normalizedIndex),
+            lineY: (seededUnit(index, 4) - 0.5) * 0.08,
+            lineZ,
+            scatterX: (seededUnit(index, 1) - 0.5) * viewport.width * 0.92,
+            scatterY: (seededUnit(index, 2) - 0.5) * viewport.height * 0.72,
+            scatterZ: lineZ + (seededUnit(index, 3) - 0.5) * 3.4,
+            scatterRotationX: (seededUnit(index, 5) - 0.5) * 1.3,
+            scatterRotationZ: (seededUnit(index, 6) - 0.5) * 1.6,
+          };
           return (
             <Card
               key={`${item.id}-${index}`}
@@ -741,8 +880,10 @@ function RingScene({
               angle={(index / count) * Math.PI * 2}
               radius={radius}
               selected={selectedIndex === index}
-              hovered={hoveredIndex === index}
+              hoverInfluence={hoverInfluence}
               selectedMode={selectedIndex !== null}
+              introProgressRef={introProgressRef}
+              introLayout={introLayout}
               label={resolveCategoryLabel(item)}
               title={item.title}
               onSelect={onSelect}
@@ -763,10 +904,65 @@ export default function RingCarousel({ items }) {
   const [rotationTarget, setRotationTarget] = useState(Math.PI / 2);
   const [scrollEnergy, setScrollEnergy] = useState(0);
   const [selectedCardHovered, setSelectedCardHovered] = useState(false);
+  const [ringReady, setRingReady] = useState(false);
+  const [homeIntroFinished, setHomeIntroFinished] = useState(false);
+  const [introMode, setIntroMode] = useState("waiting");
   const displayItems = useMemo(() => getDisplayItems(items), [items]);
   const hoveredItem = hoveredIndex !== null ? displayItems[hoveredIndex] : null;
   const rotationAtSelectRef = useRef(null);
   const scrollCooldownRef = useRef(false);
+  const interactionReady = introMode === "skip" || introMode === "complete";
+
+  const handleRingReady = useCallback(() => {
+    setRingReady(true);
+  }, []);
+
+  const handleFormationComplete = useCallback(() => {
+    try {
+      window.sessionStorage.setItem(RING_FORMATION_SESSION_KEY, "1");
+    } catch {}
+    setIntroMode("complete");
+  }, []);
+
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let formationCompleted = false;
+    let loadingCompleted = false;
+
+    try {
+      formationCompleted = window.sessionStorage.getItem(RING_FORMATION_SESSION_KEY) === "1";
+      loadingCompleted = window.sessionStorage.getItem(HOME_INTRO_SESSION_KEY) === "1";
+    } catch {}
+
+    if (prefersReducedMotion || formationCompleted) {
+      if (prefersReducedMotion) {
+        try {
+          window.sessionStorage.setItem(RING_FORMATION_SESSION_KEY, "1");
+        } catch {}
+      }
+      const skipFrame = window.requestAnimationFrame(() => {
+        setIntroMode("skip");
+        setHomeIntroFinished(true);
+      });
+      return () => window.cancelAnimationFrame(skipFrame);
+    }
+
+    const initializeFrame = window.requestAnimationFrame(() => {
+      setHomeIntroFinished(loadingCompleted);
+    });
+    const handleHomeIntroFinished = () => setHomeIntroFinished(true);
+    window.addEventListener("plusesee:home-intro-finished", handleHomeIntroFinished);
+    return () => {
+      window.cancelAnimationFrame(initializeFrame);
+      window.removeEventListener("plusesee:home-intro-finished", handleHomeIntroFinished);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (introMode !== "waiting" || !ringReady || !homeIntroFinished) return undefined;
+    const playFrame = window.requestAnimationFrame(() => setIntroMode("play"));
+    return () => window.cancelAnimationFrame(playFrame);
+  }, [homeIntroFinished, introMode, ringReady]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -777,6 +973,7 @@ export default function RingCarousel({ items }) {
 
     const handleWheel = (event) => {
       event.preventDefault();
+      if (!interactionReady) return;
       const delta = event.deltaY;
 
       // ── Selected mode: scroll switches to next/prev card ──
@@ -817,7 +1014,7 @@ export default function RingCarousel({ items }) {
 
     scene.addEventListener("wheel", handleWheel, { passive: false });
     return () => scene.removeEventListener("wheel", handleWheel);
-  }, [displayItems.length, selectedIndex]);
+  }, [displayItems.length, interactionReady, selectedIndex]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -858,6 +1055,8 @@ export default function RingCarousel({ items }) {
   };
 
   const handleSelect = (index) => {
+    if (!interactionReady) return;
+
     if (selectedIndex === index) {
       const targetUrl = resolveJumpTarget(displayItems[index]);
       if (targetUrl) {
@@ -900,14 +1099,19 @@ export default function RingCarousel({ items }) {
             selectedIndex={selectedIndex}
             hoveredIndex={hoveredIndex}
             rotationTarget={rotationTarget}
-            onHover={setHoveredIndex}
+            introMode={introMode}
+            onHover={(index) => {
+              if (interactionReady) setHoveredIndex(index);
+            }}
             onSelect={handleSelect}
             onActionHover={setSelectedCardHovered}
+            onReady={handleRingReady}
+            onIntroComplete={handleFormationComplete}
           />
         </Canvas>
       </div>
 
-      {selectedIndex === null && hoveredItem && (
+      {interactionReady && selectedIndex === null && hoveredItem && (
         <div className={styles.hoverLabel}>
           <span className={styles.hoverCategory}>{resolveCategoryLabel(hoveredItem)}</span>
           <span className={styles.hoverTitle}>{hoveredItem.title}</span>
