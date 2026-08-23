@@ -301,6 +301,33 @@
   align-items: flex-end;
 }
 
+.experienceHighlights {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 62ch;
+}
+
+.experienceHighlights p {
+  position: relative;
+  margin: 0;
+  padding-left: 0.9rem;
+  color: #444;
+  font-size: clamp(0.72rem, 0.86cqw, 0.82rem);
+  line-height: 1.65;
+}
+
+.experienceHighlights p::before {
+  content: "";
+  position: absolute;
+  top: 0.72em;
+  left: 0;
+  width: 0.28rem;
+  height: 0.28rem;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.7;
+}
+
 @container (max-width: 46rem) {
   .projectItem .itemTopline {
     grid-template-columns: 1fr;

@@ -280,6 +280,8 @@ function renderProjectItem(item, idx) {
 
 function renderWorkItem(item, idx) {
   if (isRecord(item)) {
+    const highlights = Array.isArray(item.highlights) ? item.highlights.filter(Boolean) : [];
+
     return (
       <li key={`${item.companyCn}-${item.period}-${idx}`} className={styles.experienceItem}>
         <div className={styles.itemTopline}>
@@ -295,6 +297,13 @@ function renderWorkItem(item, idx) {
             </div>
           </div>
         </div>
+        {highlights.length > 0 ? (
+          <div className={styles.experienceHighlights}>
+            {highlights.map((highlight, highlightIdx) => (
+              <p key={`${item.companyCn}-highlight-${highlightIdx}`}>{highlight}</p>
+            ))}
+          </div>
+        ) : null}
       </li>
     );
   }
