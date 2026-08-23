@@ -8,6 +8,7 @@ const defaultSystemPrompt =
   "You are a helpful AI assistant on the portfolio website of plusesee, a designer and creative. Always reply in Chinese (Simplified). Keep responses concise, friendly, and creative.";
 const defaultOfflineMessage = "AI 暂时离线，请稍后再试。";
 const defaultCloudflareModel = "@cf/qwen/qwen3-30b-a3b-fp8";
+const defaultModelScopeModel = "Qwen/Qwen3-8B";
 
 const MAX_HISTORY_MESSAGES = 12;
 const MAX_MESSAGE_LENGTH = 2000;
@@ -67,6 +68,102 @@ const getCloudflareReply = (data) => {
   return content.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
 };
 
+const getModelScopeReply = (data) => {
+  const content = data?.choices?.[0]?.message?.content;
+
+  if (typeof content !== "string") return "";
+
+  return content.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
+};
+
+const fetchWithTimeout = async (url, options) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
+const requestCloudflare = async ({ messages, systemPrompt }) => {
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+
+  if (!apiToken || !accountId) return "";
+
+  const configuredModel = process.env.CLOUDFLARE_AI_MODEL || defaultCloudflareModel;
+  const model = /^@cf\/[a-z0-9._-]+\/[a-z0-9._-]+$/i.test(configuredModel)
+    ? configuredModel
+    : defaultCloudflareModel;
+  const response = await fetchWithTimeout(
+    `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${model}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiToken}`,
+      },
+      body: JSON.stringify({
+        messages: [{ role: "system", content: systemPrompt }, ...messages],
+        stream: false,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        temperature: 0.6,
+      }),
+    }
+  );
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok || data?.success === false) {
+    console.error("Cloudflare Workers AI error:", {
+      status: response.status,
+      errors: data?.errors,
+    });
+    throw new Error(`Cloudflare request failed with status ${response.status}`);
+  }
+
+  const content = getCloudflareReply(data);
+  if (!content) throw new Error("Cloudflare returned an empty response");
+
+  return content;
+};
+
+const requestModelScope = async ({ messages, systemPrompt }) => {
+  const apiKey = process.env.MODELSCOPE_API_KEY;
+  if (!apiKey || apiKey === "your_api_key_here") return "";
+
+  const response = await fetchWithTimeout("https://api-inference.modelscope.cn/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: process.env.MODELSCOPE_AI_MODEL || defaultModelScopeModel,
+      messages: [{ role: "system", content: systemPrompt }, ...messages],
+      stream: false,
+      enable_thinking: false,
+      max_tokens: MAX_OUTPUT_TOKENS,
+      temperature: 0.6,
+    }),
+  });
+  const data = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    console.error("ModelScope API error:", {
+      status: response.status,
+      error: data?.error?.message,
+    });
+    throw new Error(`ModelScope request failed with status ${response.status}`);
+  }
+
+  const content = getModelScopeReply(data);
+  if (!content) throw new Error("ModelScope returned an empty response");
+
+  return content;
+};
+
 const readAIConfig = async () => {
   try {
     const fileContents = await fs.readFile(contentFilePath, "utf8");
@@ -106,69 +203,28 @@ export async function POST(req) {
       );
     }
 
-    const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-    const configuredModel = process.env.CLOUDFLARE_AI_MODEL || defaultCloudflareModel;
-    const model = /^@cf\/[a-z0-9._-]+\/[a-z0-9._-]+$/i.test(configuredModel)
-      ? configuredModel
-      : defaultCloudflareModel;
-
-    if (!apiToken || !accountId) {
-      return NextResponse.json({
-        role: "assistant",
-        content: aiConfig.offlineMessage,
-      });
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    let response;
-
+    let content = "";
     try {
-      response = await fetch(
-        `https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/ai/run/${model}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiToken}`,
-          },
-          body: JSON.stringify({
-            messages: [
-              {
-                role: "system",
-                content: aiConfig.systemPrompt,
-              },
-              ...safeMessages,
-            ],
-            stream: false,
-            max_tokens: MAX_OUTPUT_TOKENS,
-            temperature: 0.6,
-          }),
-          signal: controller.signal,
-        }
-      );
-    } finally {
-      clearTimeout(timeoutId);
-    }
-
-    const data = await response.json().catch(() => null);
-
-    if (!response.ok || data?.success === false) {
-      console.error("Cloudflare Workers AI error:", {
-        status: response.status,
-        errors: data?.errors,
+      content = await requestCloudflare({
+        messages: safeMessages,
+        systemPrompt: aiConfig.systemPrompt,
       });
-      return NextResponse.json(
-        { role: "assistant", content: aiConfig.offlineMessage },
-        { status: 502 }
-      );
+    } catch (error) {
+      console.error("Cloudflare provider failed; trying ModelScope:", error?.message);
     }
-
-    const content = getCloudflareReply(data);
 
     if (!content) {
-      console.error("Cloudflare Workers AI returned an empty response");
+      try {
+        content = await requestModelScope({
+          messages: safeMessages,
+          systemPrompt: aiConfig.systemPrompt,
+        });
+      } catch (error) {
+        console.error("ModelScope fallback failed:", error?.message);
+      }
+    }
+
+    if (!content) {
       return NextResponse.json(
         { role: "assistant", content: aiConfig.offlineMessage },
         { status: 502 }
