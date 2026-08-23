@@ -24,6 +24,17 @@ const markHomeIntroCompleted = () => {
   } catch {}
 };
 
+const isLocalMotionTest = () => {
+  if (typeof window === "undefined") return false;
+  const isLocalHost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+  return (
+    isLocalHost &&
+    new URLSearchParams(window.location.search).get("motion-test") === "1"
+  );
+};
+
 export default function LoadingScreen() {
   const pathname = usePathname();
   const [text, setText] = useState("");
@@ -34,6 +45,11 @@ export default function LoadingScreen() {
   const [waitTimedOut, setWaitTimedOut] = useState(false);
 
   useEffect(() => {
+    if (isLocalMotionTest()) {
+      setIsFinished(true);
+      return undefined;
+    }
+
     if (pathname !== "/") {
       setIsFinished(true);
       return undefined;

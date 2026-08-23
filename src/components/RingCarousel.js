@@ -1,8 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import * as THREE from "three";
 import ringThumbnailManifest from "../data/ring-thumbnails.json";
 import styles from "./RingCarousel.module.css";
@@ -11,11 +18,24 @@ const TARGET_RING_SLOTS = 45;
 const TEXTURE_LOAD_CONCURRENCY = 4;
 const MAX_DECODED_RING_IMAGES = 30;
 const RING_IMAGE_CACHE_TTL_MS = 5 * 60 * 1000;
-const RING_FORMATION_DURATION_SECONDS = 3.4;
 const HOME_INTRO_SESSION_KEY = "plusesee:home-intro-completed";
 const RING_FORMATION_SESSION_KEY = "plusesee:ring-formation-completed";
-const RING_CORNER_RADIUS_RATIO = 0.045;
-const HOVER_NEIGHBOR_INFLUENCE = [1, 0.52, 0.22, 0.08];
+const RING_CORNER_RADIUS_RATIO = 0.03;
+const RING_ENTRY_ANGLE = Math.PI;
+const RING_MOTION_FRACTION = 0.94;
+const INTRO_VIEW_BLEND_START = 0.08;
+const RING_ENTRY_TILT = 0.035;
+const RING_IDLE_TILT = 0.1;
+const DEFAULT_CARD_SIZE = 0.68;
+const DEFAULT_RING_SIZE = 0.65;
+const HOVER_CARD_SIZE = 0.8;
+const HOVER_RING_SIZE = 0.4;
+const INTRO_PATHS = {
+  current: { label: "CURRENT", approachSlots: 4.5, duration: 2.4 },
+  path1: { label: "PATH 1", approachSlots: 12, duration: 2.55 },
+  path2: { label: "PATH 2", approachSlots: 16, duration: 2.65 },
+  path3: { label: "PATH 3", approachSlots: 16, duration: 2.65 },
+};
 const decodedRingImageCache = new Map();
 const CAMERA_START = new THREE.Vector3(0, 1.4, 26);
 const LOOK_AT_START = new THREE.Vector3(0, 0.42, 0);
@@ -36,14 +56,94 @@ const smoothstep = (start, end, value) => {
   return progress * progress * (3 - 2 * progress);
 };
 
-const seededUnit = (index, offset) => {
-  const value = Math.sin(index * 127.1 + offset * 311.7) * 43758.5453;
-  return value - Math.floor(value);
+const getRingAngle = (index, count) =>
+  RING_ENTRY_ANGLE + ((count - index) / Math.max(1, count)) * Math.PI * 2;
+
+const cubicBezier = (start, controlA, controlB, end, progress) => {
+  const inverse = 1 - progress;
+  return (
+    inverse * inverse * inverse * start +
+    3 * inverse * inverse * progress * controlA +
+    3 * inverse * progress * progress * controlB +
+    progress * progress * progress * end
+  );
 };
 
-const getCircularIndexDistance = (left, right, count) => {
-  const direct = Math.abs(left - right);
-  return Math.min(direct, count - direct);
+const isLocalMotionTest = () => {
+  if (typeof window === "undefined") return false;
+  const isLocalHost =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+  return (
+    isLocalHost &&
+    new URLSearchParams(window.location.search).get("motion-test") === "1"
+  );
+};
+
+const getIntroViewBlend = (progress) =>
+  smoothstep(INTRO_VIEW_BLEND_START, 1, progress);
+
+const setApproachPathPosition = (target, pathId, radius, progress) => {
+  const startX = radius * 0.8;
+  const startY = -0.28;
+  const startZ = -radius * 1.75;
+  const endX = Math.sin(RING_ENTRY_ANGLE) * radius;
+  const endZ = Math.cos(RING_ENTRY_ANGLE) * radius;
+  const baseX = cubicBezier(startX, radius * 0.62, radius * 0.18, endX, progress);
+  const baseY = cubicBezier(startY, -0.14, 0.03, 0, progress);
+  const baseZ = cubicBezier(startZ, -radius * 1.55, -radius * 1.18, endZ, progress);
+  const envelope = Math.sin(Math.PI * progress);
+
+  if (pathId === "path1") {
+    // A long, low arch: it begins farther away, carries its horizontal motion
+    // for longer, then meets the existing ring entry without a tall wall of cards.
+    const pathX = cubicBezier(
+      radius * 0.95,
+      radius * 0.74,
+      radius * 0.22,
+      endX,
+      progress
+    );
+    const pathZ = cubicBezier(
+      -radius * 2.2,
+      -radius * 1.95,
+      -radius * 1.32,
+      endZ,
+      progress
+    );
+    target.set(
+      pathX - envelope * radius * 0.06,
+      baseY + envelope * radius * 0.4,
+      pathZ
+    );
+    return;
+  }
+
+  if (pathId === "path2") {
+    // Two visible turns around the approach axis, shrinking cleanly into the ring.
+    const phase = progress * Math.PI * 4;
+    const helixRadius = radius * 0.46 * Math.pow(envelope, 0.78);
+    target.set(
+      baseX + Math.sin(phase) * helixRadius * 0.28,
+      baseY + Math.sin(phase) * helixRadius * 0.78,
+      baseZ + Math.cos(phase) * helixRadius
+    );
+    return;
+  }
+
+  if (pathId === "path3") {
+    // A broad screen-space figure eight with a quieter depth roll.
+    const phase = progress * Math.PI * 2;
+    const loopEnvelope = Math.pow(envelope, 0.72);
+    target.set(
+      baseX + Math.cos(phase) * radius * 0.14 * loopEnvelope,
+      baseY + Math.sin(phase * 2) * radius * 0.56 * loopEnvelope,
+      baseZ + Math.sin(phase) * radius * 1.05 * loopEnvelope
+    );
+    return;
+  }
+
+  target.set(baseX, baseY, baseZ);
 };
 
 const getThumb = (item) => {
@@ -423,8 +523,6 @@ const useProgressiveTextures = (textureSpecs) => {
   return textures;
 };
 
-const angularDelta = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
-
 function Card({
   index,
   texture,
@@ -432,15 +530,17 @@ function Card({
   angle,
   radius,
   selected,
-  hoverInfluence,
+  hovered,
+  sideHovered,
   selectedMode,
   introProgressRef,
-  introLayout,
-  label,
-  title,
+  introPath,
+  cardSize,
+  count,
   onSelect,
   onHover,
   onActionHover,
+  onSideHover,
 }) {
   const { camera } = useThree();
   const groupRef = useRef(null);
@@ -470,7 +570,7 @@ function Card({
     const frontness = (Math.cos(worldAngle) + 1) / 2;
 
     // 2. Compute targets
-    let tY, tZ, tScale, tOpacity, targetRotY, tTint;
+    let tY, tScale, tOpacity, targetRotY, tTint;
 
     if (selectedMode) {
       // Rigid background layout, uniform sizes, no frontness stretching
@@ -483,9 +583,9 @@ function Card({
         Math.cos(angle) * (radius + popOut)
       );
       
-      tScale = selected ? 1.06 : 0.5;
-      tOpacity = selected ? 1 : 0.15;
-      tTint = selected ? WHITE_TINT : DIM_TINT;
+      tScale = selected ? 1.06 : sideHovered ? 0.56 : 0.5;
+      tOpacity = selected ? 1 : sideHovered ? 0.34 : 0.15;
+      tTint = selected || sideHovered ? WHITE_TINT : DIM_TINT;
     } else {
       // Dynamic overview layout, front cards bloom and scale up
       tY = (frontness - 0.5) * 0.18;
@@ -502,56 +602,82 @@ function Card({
     }
 
     const introProgress = introProgressRef.current;
-    const toLineProgress = smoothstep(0.04, 0.34, introProgress);
-    const toRingProgress = smoothstep(0.4, 0.84, introProgress);
-    const revealDelay = (index / Math.max(1, introLayout.count - 1)) * 0.12;
-    const revealProgress = smoothstep(revealDelay, revealDelay + 0.18, introProgress);
+    const introActive = introProgress < 0.999;
 
-    if (introProgress < 0.999) {
-      const scatterX = THREE.MathUtils.lerp(
-        introLayout.scatterX,
-        introLayout.lineX,
-        toLineProgress
+    if (introActive) {
+      const pathConfig = INTRO_PATHS[introPath] || INTRO_PATHS.current;
+      const approachSlots = pathConfig.approachSlots;
+      // A single moving head drives every card. Subtracting the card index keeps
+      // the train evenly spaced while the leading cards progressively trace the ring.
+      const linearMotionProgress = THREE.MathUtils.clamp(
+        introProgress / RING_MOTION_FRACTION,
+        0,
+        1
       );
-      const scatterY = THREE.MathUtils.lerp(
-        introLayout.scatterY,
-        introLayout.lineY,
-        toLineProgress
+      const motionProgress =
+        introPath === "path1"
+          ? 1 - Math.pow(1 - linearMotionProgress, 1.28)
+          : linearMotionProgress;
+      const pathPosition =
+        motionProgress * (count + approachSlots) - index;
+      const approachProgress = THREE.MathUtils.clamp(
+        pathPosition / approachSlots,
+        0,
+        1
       );
-      const scatterZ = THREE.MathUtils.lerp(
-        introLayout.scatterZ,
-        introLayout.lineZ,
-        toLineProgress
-      );
+      let pathAngle = RING_ENTRY_ANGLE;
 
-      targetVector.current.set(
-        THREE.MathUtils.lerp(scatterX, targetVector.current.x, toRingProgress),
-        THREE.MathUtils.lerp(scatterY, targetVector.current.y, toRingProgress),
-        THREE.MathUtils.lerp(scatterZ, targetVector.current.z, toRingProgress)
-      );
+      if (pathPosition <= approachSlots) {
+        setApproachPathPosition(
+          targetVector.current,
+          introPath,
+          radius,
+          approachProgress
+        );
+      } else {
+        const ringSlots = Math.min(pathPosition - approachSlots, count - index);
+        pathAngle = RING_ENTRY_ANGLE + (ringSlots / count) * Math.PI * 2;
+        const pathWorldAngle = pathAngle + groupRotY;
+        const pathFrontness = (Math.cos(pathWorldAngle) + 1) / 2;
+        targetVector.current.set(
+          Math.sin(pathAngle) * radius,
+          (pathFrontness - 0.5) * 0.18,
+          Math.cos(pathAngle) * radius
+        );
+        tScale = 0.76 + pathFrontness * 0.82;
+        tOpacity = texture ? 0.36 + pathFrontness * 0.46 : 0.045;
+      }
+
+      const revealProgress = smoothstep(0.05, 0.72, approachProgress);
+      tScale *= THREE.MathUtils.lerp(0.62, 1, revealProgress);
       tOpacity *= revealProgress;
+      targetRotY = pathAngle + Math.PI / 2;
     }
 
-    const hoverActive = hoverInfluence > 0 && !selectedMode && introProgress >= 0.999;
-    if (hoverActive && texture) {
-      tOpacity = Math.max(tOpacity, 0.82 + hoverInfluence * 0.16);
+    const directCardHover = hovered && !selectedMode && !introActive;
+
+    if (directCardHover && texture) {
+      tOpacity = Math.max(tOpacity, 0.98);
     }
 
-    const hoverBoost = hoverActive ? 1 + hoverInfluence * 0.12 : 1;
-    tScale *= hoverBoost;
+    const hoverBoost = directCardHover ? 1.12 : 1;
+    tScale *= hoverBoost * (cardSize / DEFAULT_CARD_SIZE);
     targetScale.current.setScalar(tScale);
 
     // 3. Apply easing
-    mesh.position.x = THREE.MathUtils.damp(mesh.position.x, targetVector.current.x, 6.8, delta);
-    mesh.position.y = THREE.MathUtils.damp(mesh.position.y, targetVector.current.y, 6.8, delta);
-    mesh.position.z = THREE.MathUtils.damp(mesh.position.z, targetVector.current.z, 6.8, delta);
+    const positionDamping = introActive ? 14 : 6.8;
+    const scaleDamping = introActive ? 13 : 8;
+    const opacityDamping = introActive ? 14 : 8.4;
+    mesh.position.x = THREE.MathUtils.damp(mesh.position.x, targetVector.current.x, positionDamping, delta);
+    mesh.position.y = THREE.MathUtils.damp(mesh.position.y, targetVector.current.y, positionDamping, delta);
+    mesh.position.z = THREE.MathUtils.damp(mesh.position.z, targetVector.current.z, positionDamping, delta);
 
-    mesh.scale.x = THREE.MathUtils.damp(mesh.scale.x, targetScale.current.x, 8, delta);
-    mesh.scale.y = THREE.MathUtils.damp(mesh.scale.y, targetScale.current.y, 8, delta);
-    mesh.scale.z = THREE.MathUtils.damp(mesh.scale.z, targetScale.current.z, 8, delta);
+    mesh.scale.x = THREE.MathUtils.damp(mesh.scale.x, targetScale.current.x, scaleDamping, delta);
+    mesh.scale.y = THREE.MathUtils.damp(mesh.scale.y, targetScale.current.y, scaleDamping, delta);
+    mesh.scale.z = THREE.MathUtils.damp(mesh.scale.z, targetScale.current.z, scaleDamping, delta);
 
     if (materialRef.current) {
-      materialRef.current.opacity = THREE.MathUtils.damp(materialRef.current.opacity, tOpacity, 8.4, delta);
+      materialRef.current.opacity = THREE.MathUtils.damp(materialRef.current.opacity, tOpacity, opacityDamping, delta);
       materialRef.current.color.lerp(tTint, 1 - Math.exp(-7 * delta));
     }
 
@@ -560,31 +686,10 @@ function Card({
       mesh.parent.getWorldQuaternion(parentQuaternion.current);
       desiredQuaternion.current.copy(parentQuaternion.current).invert().multiply(camera.quaternion);
       mesh.quaternion.slerp(desiredQuaternion.current, 1 - Math.exp(-8.5 * delta));
-    } else if (introProgress < 0.999 && mesh.parent) {
-      const faceCameraY = -mesh.parent.rotation.y;
-      const ringRotationY = angle + Math.PI / 2;
-      const introRotationY = faceCameraY + angularDelta(ringRotationY, faceCameraY) * toRingProgress;
-      mesh.rotation.x = THREE.MathUtils.damp(
-        mesh.rotation.x,
-        introLayout.scatterRotationX * (1 - toLineProgress),
-        8,
-        delta
-      );
-      mesh.rotation.y = dampAngle(mesh.rotation.y, introRotationY, 8.5, delta);
-      mesh.rotation.z = THREE.MathUtils.damp(
-        mesh.rotation.z,
-        introLayout.scatterRotationZ * (1 - toLineProgress),
-        8,
-        delta
-      );
-    } else if (hoverActive && mesh.parent) {
-      const faceCameraY = -mesh.parent.rotation.y;
-      const ringRotationY = angle + Math.PI / 2;
-      const influencedRotationY =
-        ringRotationY + angularDelta(faceCameraY, ringRotationY) * hoverInfluence;
-      mesh.rotation.x = THREE.MathUtils.damp(mesh.rotation.x, 0, 7, delta);
-      mesh.rotation.y = dampAngle(mesh.rotation.y, influencedRotationY, 8.5, delta);
-      mesh.rotation.z = THREE.MathUtils.damp(mesh.rotation.z, 0, 7, delta);
+    } else if (introActive && mesh.parent) {
+      mesh.rotation.x = THREE.MathUtils.damp(mesh.rotation.x, 0, 12, delta);
+      mesh.rotation.y = dampAngle(mesh.rotation.y, targetRotY, 14, delta);
+      mesh.rotation.z = THREE.MathUtils.damp(mesh.rotation.z, 0, 12, delta);
     } else {
       targetRotY = angle + Math.PI / 2;
       mesh.rotation.x = THREE.MathUtils.damp(mesh.rotation.x, 0, 7, delta);
@@ -597,11 +702,16 @@ function Card({
     ? texture.image.width / texture.image.height
     : targetAspect;
 
-  const cardWidth = 0.68 * cardAspect;
-  const cardHeight = 0.68;
-  const hitboxWidth = cardHeight * 1.35;
-  const hitboxHeight = cardHeight * 1.75;
-  const hitboxDepth = 0.72;
+  const cardWidth = DEFAULT_CARD_SIZE * cardAspect;
+  const cardHeight = DEFAULT_CARD_SIZE;
+  const selectedActionTarget = selectedMode && selected;
+  const hitboxWidth = selectedActionTarget
+    ? Math.max(cardWidth * 1.06, cardHeight * 0.58)
+    : cardHeight * 1.35;
+  const hitboxHeight = selectedActionTarget
+    ? cardHeight * 1.12
+    : cardHeight * 1.75;
+  const hitboxDepth = selectedActionTarget ? 0.16 : 0.72;
 
   return (
     <group
@@ -613,7 +723,12 @@ function Card({
       onPointerOver={(event) => {
         event.stopPropagation();
         if (selectedMode && selected) {
+          onSideHover(null, "");
           onActionHover(true);
+          return;
+        }
+        if (selectedMode) {
+          onSideHover(index, event.pointer.x < 0 ? "left" : "right");
           return;
         }
         if (!selectedMode) onHover(index);
@@ -622,6 +737,10 @@ function Card({
         event.stopPropagation();
         if (selectedMode && selected) {
           onActionHover(false);
+          return;
+        }
+        if (selectedMode) {
+          onSideHover(null, "");
           return;
         }
         if (!selectedMode) onHover(null);
@@ -651,30 +770,11 @@ function Card({
           depthWrite={false}
         />
       </mesh>
-      {selectedMode && selected && (label || title) && (
-        <Html
-          position={[0, -0.64, 0]}
-          center
-          style={{
-            pointerEvents: 'none',
-            whiteSpace: 'nowrap',
-            color: 'rgba(60, 60, 60, 0.8)',
-            fontFamily: 'inherit',
-            textAlign: 'center',
-            userSelect: 'none',
-          }}
-        >
-          <div className={styles.cardCaption}>
-            {label && <span className={styles.cardCaptionCategory}>{label}</span>}
-            {title && <span className={styles.cardCaptionTitle}>{title}</span>}
-          </div>
-        </Html>
-      )}
     </group>
   );
 }
 
-function CameraRig({ focusActive, radius }) {
+function CameraRig({ focusActive, radius, introProgressRef }) {
   const { camera, pointer } = useThree();
   const cameraRef = useRef(camera);
   const lookAtTarget = useRef(LOOK_AT_START.clone());
@@ -691,12 +791,19 @@ function CameraRig({ focusActive, radius }) {
     if (!activeCamera) return;
 
     focusProgress.current = THREE.MathUtils.damp(focusProgress.current, focusActive ? 1 : 0, 4.8, delta);
+    const introViewBlend = getIntroViewBlend(introProgressRef.current);
 
-    // Only apply mouse drift when NOT focused — in focus mode, lock camera perfectly still
-    const idleDriftX = focusActive ? 0 : pointer.x * 0.14;
-    const idleDriftY = focusActive ? 0 : pointer.y * 0.36;
+    // Introduce the idle viewpoint gradually through most of the formation.
+    // Waiting until the last settle frames made the perspective change read as a cut.
+    const idleInputBlend = focusActive ? 0 : introViewBlend;
+    const idleDriftX = pointer.x * 0.14 * idleInputBlend;
+    const idleDriftY = pointer.y * 0.36 * idleInputBlend;
     desiredPosition.current.set(CAMERA_START.x + idleDriftX, CAMERA_START.y + idleDriftY, CAMERA_START.z);
-    desiredLookAt.current.set(LOOK_AT_START.x + (focusActive ? 0 : pointer.x * 0.18), LOOK_AT_START.y + (focusActive ? 0 : pointer.y * 0.22), LOOK_AT_START.z);
+    desiredLookAt.current.set(
+      LOOK_AT_START.x + pointer.x * 0.18 * idleInputBlend,
+      LOOK_AT_START.y + pointer.y * 0.22 * idleInputBlend,
+      LOOK_AT_START.z
+    );
 
     if (focusProgress.current > 0.001) {
       const eased = focusProgress.current * focusProgress.current * (3 - 2 * focusProgress.current);
@@ -732,11 +839,16 @@ function RingScene({
   displayItems,
   selectedIndex,
   hoveredIndex,
-  rotationTarget,
+  rotationTargetRef,
   introMode,
+  introPath,
+  cardSize,
+  ringSize,
   onHover,
   onSelect,
   onActionHover,
+  sideHoveredIndex,
+  onSideHover,
   onReady,
   onIntroComplete,
 }) {
@@ -747,13 +859,24 @@ function RingScene({
     () => textureSpecs.map((spec) => spec.key).join("|"),
     [textureSpecs]
   );
-  const hasAnyTexture = textures.size > 0;
+  const uniqueTextureCount = useMemo(
+    () => new Set(textureSpecs.map((spec) => spec.key)).size,
+    [textureSpecs]
+  );
+  const minimumReadyTextureCount = Math.min(uniqueTextureCount, 8);
+  const hasEnoughTextures = textures.size >= minimumReadyTextureCount;
   const readySignatureRef = useRef("");
   const { viewport, pointer } = useThree();
   const groupScale = useRef(new THREE.Vector3(1, 1, 1));
   const swayRef = useRef(0);
   const introProgressRef = useRef(introMode === "skip" ? 1 : 0);
   const introCompletionSentRef = useRef(introMode === "skip");
+
+  useLayoutEffect(() => {
+    if (groupRef.current) {
+      groupRef.current.rotation.y = rotationTargetRef.current;
+    }
+  }, [rotationTargetRef]);
 
   useEffect(() => {
     if (introMode === "skip") {
@@ -769,7 +892,7 @@ function RingScene({
   }, [introMode]);
 
   useEffect(() => {
-    if (!hasAnyTexture || readySignatureRef.current === textureSignature) return undefined;
+    if (!hasEnoughTextures || readySignatureRef.current === textureSignature) return undefined;
 
     let secondFrame;
     const firstFrame = window.requestAnimationFrame(() => {
@@ -784,24 +907,22 @@ function RingScene({
       window.cancelAnimationFrame(firstFrame);
       if (secondFrame) window.cancelAnimationFrame(secondFrame);
     };
-  }, [hasAnyTexture, onReady, textureSignature]);
+  }, [hasEnoughTextures, onReady, textureSignature]);
 
-  const radius = Math.min(viewport.width, viewport.height) * 0.66;
+  const radius = Math.min(viewport.width, viewport.height) * ringSize;
   const count = displayItems.length;
-  const lineSpan = Math.min(viewport.width * 0.84, Math.max(5.2, count * 0.22));
-  const lineZ = radius * 0.62;
   const selectedAngle =
     selectedIndex === null || count === 0
       ? null
-      : (selectedIndex / count) * Math.PI * 2;
-  const sceneRotationTarget = selectedAngle === null ? rotationTarget : -selectedAngle;
+      : getRingAngle(selectedIndex, count);
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
     if (introMode === "play" && introProgressRef.current < 1) {
+      const pathConfig = INTRO_PATHS[introPath] || INTRO_PATHS.current;
       introProgressRef.current = Math.min(
         1,
-        introProgressRef.current + delta / RING_FORMATION_DURATION_SECONDS
+        introProgressRef.current + delta / pathConfig.duration
       );
       if (introProgressRef.current >= 1 && !introCompletionSentRef.current) {
         introCompletionSentRef.current = true;
@@ -810,85 +931,81 @@ function RingScene({
     }
 
     const introProgress = introProgressRef.current;
-    const introSettleProgress = smoothstep(0.72, 1, introProgress);
+    const introViewBlend = getIntroViewBlend(introProgress);
     const selectedMode = selectedIndex !== null;
-    const targetX = selectedIndex === null ? 0.15 + pointer.y * 0.05 : 0;
-    const targetScale = selectedMode ? 1.22 : 1;
-    const swayTarget = selectedMode ? 0 : pointer.x * 2.4;
-    swayRef.current = selectedMode
+    const targetX = selectedMode
       ? 0
-      : THREE.MathUtils.damp(swayRef.current, swayTarget, 6.4, delta);
+      : THREE.MathUtils.lerp(
+          RING_ENTRY_TILT,
+          RING_IDLE_TILT,
+          introViewBlend
+        ) + pointer.y * 0.025 * introViewBlend;
+    const targetScale = selectedMode ? 1.22 : 1;
+    const swayTarget = selectedMode
+      ? 0
+      : pointer.x * 2.4 * introViewBlend;
+    swayRef.current = THREE.MathUtils.damp(swayRef.current, swayTarget, 6.4, delta);
     groupScale.current.setScalar(targetScale);
 
-    // Shortest angular path math prevents brutal 360-spins across array boundaries (e.g., photo 41 -> photo 0)
-    let diff = sceneRotationTarget - groupRef.current.rotation.y;
-    diff = Math.atan2(Math.sin(diff), Math.cos(diff));
-    const targetGroupY = groupRef.current.rotation.y + diff;
+    let targetGroupY = rotationTargetRef.current + swayRef.current;
+    if (selectedAngle !== null) {
+      // Selection still takes the shortest route to the chosen card. The idle
+      // wheel target stays unwrapped so fast continuous scrolling never reverses.
+      let diff = -selectedAngle - groupRef.current.rotation.y;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      targetGroupY = groupRef.current.rotation.y + diff;
+    }
 
-    const animatedGroupY = THREE.MathUtils.lerp(-0.28, targetGroupY + swayRef.current, introSettleProgress);
     groupRef.current.rotation.y = THREE.MathUtils.damp(
       groupRef.current.rotation.y,
-      introProgress < 0.999 ? animatedGroupY : targetGroupY + swayRef.current,
+      targetGroupY,
       selectedMode ? 10.5 : 4.2,
       delta
     );
     groupRef.current.rotation.x = THREE.MathUtils.damp(
       groupRef.current.rotation.x,
-      introProgress < 0.999 ? targetX * introSettleProgress : targetX,
-      4.6,
+      targetX,
+      3,
       delta
     );
-    const introScale = THREE.MathUtils.lerp(0.86, groupScale.current.x, introSettleProgress);
-    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, introScale, selectedMode ? 10.5 : 3.4, delta);
-    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, introScale, selectedMode ? 10.5 : 3.4, delta);
-    groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, introScale, selectedMode ? 10.5 : 3.4, delta);
-    groupRef.current.position.y = THREE.MathUtils.damp(
-      groupRef.current.position.y,
-      GROUP_POSITION.y + THREE.MathUtils.lerp(-0.42, 0, introSettleProgress),
-      5.2,
-      delta
-    );
+    groupRef.current.scale.x = THREE.MathUtils.damp(groupRef.current.scale.x, groupScale.current.x, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.scale.y = THREE.MathUtils.damp(groupRef.current.scale.y, groupScale.current.y, selectedMode ? 10.5 : 3.4, delta);
+    groupRef.current.scale.z = THREE.MathUtils.damp(groupRef.current.scale.z, groupScale.current.z, selectedMode ? 10.5 : 3.4, delta);
   });
 
   return (
     <>
-      <CameraRig focusActive={selectedIndex !== null} radius={radius} />
-      <group ref={groupRef} position={GROUP_POSITION.toArray()}>
+      <CameraRig
+        focusActive={selectedIndex !== null}
+        radius={radius}
+        introProgressRef={introProgressRef}
+      />
+      <group
+        ref={groupRef}
+        position={GROUP_POSITION.toArray()}
+      >
         {displayItems.map((item, index) => {
           const textureSpec = textureSpecs[index];
-          const normalizedIndex = count > 1 ? index / (count - 1) : 0.5;
-          const neighborDistance =
-            hoveredIndex === null ? Number.POSITIVE_INFINITY : getCircularIndexDistance(index, hoveredIndex, count);
-          const hoverInfluence = HOVER_NEIGHBOR_INFLUENCE[neighborDistance] || 0;
-          const introLayout = {
-            count,
-            lineX: THREE.MathUtils.lerp(-lineSpan / 2, lineSpan / 2, normalizedIndex),
-            lineY: (seededUnit(index, 4) - 0.5) * 0.08,
-            lineZ,
-            scatterX: (seededUnit(index, 1) - 0.5) * viewport.width * 0.92,
-            scatterY: (seededUnit(index, 2) - 0.5) * viewport.height * 0.72,
-            scatterZ: lineZ + (seededUnit(index, 3) - 0.5) * 3.4,
-            scatterRotationX: (seededUnit(index, 5) - 0.5) * 1.3,
-            scatterRotationZ: (seededUnit(index, 6) - 0.5) * 1.6,
-          };
           return (
             <Card
               key={`${item.id}-${index}`}
               index={index}
               texture={textures.get(textureSpec.key) || null}
               targetAspect={textureSpec.aspect}
-              angle={(index / count) * Math.PI * 2}
+              angle={getRingAngle(index, count)}
               radius={radius}
               selected={selectedIndex === index}
-              hoverInfluence={hoverInfluence}
+              hovered={hoveredIndex === index}
+              sideHovered={sideHoveredIndex === index}
               selectedMode={selectedIndex !== null}
               introProgressRef={introProgressRef}
-              introLayout={introLayout}
-              label={resolveCategoryLabel(item)}
-              title={item.title}
+              introPath={introPath}
+              cardSize={cardSize}
+              count={count}
               onSelect={onSelect}
               onHover={onHover}
               onActionHover={onActionHover}
+              onSideHover={onSideHover}
             />
           );
         })}
@@ -898,18 +1015,28 @@ function RingScene({
 }
 
 export default function RingCarousel({ items }) {
+  const prefersReducedMotion = useReducedMotion();
   const sceneRef = useRef(null);
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(null);
-  const [rotationTarget, setRotationTarget] = useState(Math.PI / 2);
-  const [scrollEnergy, setScrollEnergy] = useState(0);
   const [selectedCardHovered, setSelectedCardHovered] = useState(false);
+  const [sideHover, setSideHover] = useState({ index: null, direction: "" });
   const [ringReady, setRingReady] = useState(false);
   const [homeIntroFinished, setHomeIntroFinished] = useState(false);
   const [introMode, setIntroMode] = useState("waiting");
+  const [motionTestMode, setMotionTestMode] = useState(false);
+  const [introPath, setIntroPath] = useState("current");
+  const [introInstance, setIntroInstance] = useState(0);
+  const [cardSize, setCardSize] = useState(DEFAULT_CARD_SIZE);
+  const [ringSize, setRingSize] = useState(DEFAULT_RING_SIZE);
   const displayItems = useMemo(() => getDisplayItems(items), [items]);
   const hoveredItem = hoveredIndex !== null ? displayItems[hoveredIndex] : null;
-  const rotationAtSelectRef = useRef(null);
+  const selectedItem = selectedIndex !== null ? displayItems[selectedIndex] : null;
+  const hoverLayoutActive = hoveredIndex !== null && selectedIndex === null;
+  const effectiveCardSize = hoverLayoutActive ? HOVER_CARD_SIZE : cardSize;
+  const effectiveRingSize = hoverLayoutActive ? HOVER_RING_SIZE : ringSize;
+  const rotationTargetRef = useRef(Math.PI / 2);
+  const scrollEnergyRef = useRef(0);
   const scrollCooldownRef = useRef(false);
   const interactionReady = introMode === "skip" || introMode === "complete";
 
@@ -918,13 +1045,26 @@ export default function RingCarousel({ items }) {
   }, []);
 
   const handleFormationComplete = useCallback(() => {
-    try {
-      window.sessionStorage.setItem(RING_FORMATION_SESSION_KEY, "1");
-    } catch {}
+    if (!isLocalMotionTest()) {
+      try {
+        window.sessionStorage.setItem(RING_FORMATION_SESSION_KEY, "1");
+      } catch {}
+    }
     setIntroMode("complete");
   }, []);
 
   useEffect(() => {
+    const localMotionTest = isLocalMotionTest();
+
+    if (localMotionTest) {
+      const testFrame = window.requestAnimationFrame(() => {
+        setMotionTestMode(true);
+        setHomeIntroFinished(true);
+        setIntroMode("waiting");
+      });
+      return () => window.cancelAnimationFrame(testFrame);
+    }
+
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let formationCompleted = false;
     let loadingCompleted = false;
@@ -970,6 +1110,10 @@ export default function RingCarousel({ items }) {
 
     let downMomentum = 0;
     let locked = false;
+    const updateScrollEnergy = (nextValue) => {
+      scrollEnergyRef.current = THREE.MathUtils.clamp(nextValue, 0, 1);
+      scene.style.opacity = String(1 - scrollEnergyRef.current * 0.08);
+    };
 
     const handleWheel = (event) => {
       event.preventDefault();
@@ -988,27 +1132,28 @@ export default function RingCarousel({ items }) {
         setSelectedIndex(nextIndex);
         setHoveredIndex(nextIndex);
         setSelectedCardHovered(false);
+        setSideHover({ index: null, direction: "" });
         return;
       }
 
       // ── Normal mode: rotate the ring ──
-      setRotationTarget((current) => current - delta * 0.0035);
+      rotationTargetRef.current -= delta * 0.0035;
 
       if (delta > 0) {
         downMomentum += delta;
-        setScrollEnergy((current) => Math.min(1, current + delta / 800));
+        updateScrollEnergy(scrollEnergyRef.current + delta / 800);
         if (downMomentum > 520 && !locked) {
           locked = true;
           document.getElementById("ai-chat")?.scrollIntoView({ behavior: "smooth" });
           setTimeout(() => {
             downMomentum = 0;
-            setScrollEnergy(0);
+            updateScrollEnergy(0);
             locked = false;
           }, 1000);
         }
       } else {
         downMomentum = Math.max(0, downMomentum + delta);
-        setScrollEnergy((current) => Math.max(0, current + delta / 800));
+        updateScrollEnergy(scrollEnergyRef.current + delta / 800);
       }
     };
 
@@ -1024,7 +1169,8 @@ export default function RingCarousel({ items }) {
     const handleScroll = () => {
       const rect = scene.getBoundingClientRect();
       if (Math.abs(rect.top) < window.innerHeight * 0.12) {
-        setScrollEnergy(0);
+        scrollEnergyRef.current = 0;
+        scene.style.opacity = "1";
       }
     };
 
@@ -1041,6 +1187,7 @@ export default function RingCarousel({ items }) {
         setSelectedIndex(null);
         setHoveredIndex(null);
         setSelectedCardHovered(false);
+        setSideHover({ index: null, direction: "" });
       }
     };
 
@@ -1052,6 +1199,21 @@ export default function RingCarousel({ items }) {
     setSelectedIndex(null);
     setHoveredIndex(null);
     setSelectedCardHovered(false);
+    setSideHover({ index: null, direction: "" });
+  };
+
+  const replayIntro = (nextPath = introPath) => {
+    setIntroPath(nextPath);
+    setHoveredIndex(null);
+    setSelectedIndex(null);
+    setSelectedCardHovered(false);
+    setSideHover({ index: null, direction: "" });
+    scrollEnergyRef.current = 0;
+    if (sceneRef.current) sceneRef.current.style.opacity = "1";
+    setRingReady(false);
+    setHomeIntroFinished(true);
+    setIntroMode("waiting");
+    setIntroInstance((current) => current + 1);
   };
 
   const handleSelect = (index) => {
@@ -1068,10 +1230,7 @@ export default function RingCarousel({ items }) {
     setSelectedIndex(index);
     setHoveredIndex(index);
     setSelectedCardHovered(false);
-    setRotationTarget((current) => {
-      rotationAtSelectRef.current = current;
-      return current;
-    });
+    setSideHover({ index: null, direction: "" });
   };
 
   return (
@@ -1079,11 +1238,14 @@ export default function RingCarousel({ items }) {
       ref={sceneRef}
       className={styles.scene}
       data-cursor-clickable={selectedCardHovered ? "true" : undefined}
-      style={{
-        opacity: 1 - scrollEnergy * 0.08,
-      }}
+      data-cursor-direction={sideHover.direction || undefined}
     >
-      <div className={styles.canvasWrap}>
+      <div
+        className={styles.canvasWrap}
+        onPointerLeave={() => {
+          setHoveredIndex(null);
+        }}
+      >
         <Canvas
           dpr={[1, 1.8]}
           camera={{ position: CAMERA_START.toArray(), fov: 17.5 }}
@@ -1095,26 +1257,145 @@ export default function RingCarousel({ items }) {
           <ambientLight intensity={1.05} />
           <directionalLight position={[4, 5, 10]} intensity={0.72} />
           <RingScene
+            key={`ring-intro-${introInstance}`}
             displayItems={displayItems}
             selectedIndex={selectedIndex}
             hoveredIndex={hoveredIndex}
-            rotationTarget={rotationTarget}
+            rotationTargetRef={rotationTargetRef}
             introMode={introMode}
+            introPath={introPath}
+            cardSize={effectiveCardSize}
+            ringSize={effectiveRingSize}
             onHover={(index) => {
               if (interactionReady) setHoveredIndex(index);
             }}
             onSelect={handleSelect}
             onActionHover={setSelectedCardHovered}
+            sideHoveredIndex={sideHover.index}
+            onSideHover={(index, direction) => {
+              setSideHover({ index, direction });
+            }}
             onReady={handleRingReady}
             onIntroComplete={handleFormationComplete}
           />
         </Canvas>
       </div>
 
+      <div className={styles.selectedCaption} aria-live="polite" aria-atomic="true">
+        <AnimatePresence initial={false} mode="wait">
+          {interactionReady && selectedItem && (
+            <motion.div
+              key={`${selectedItem.id}-${selectedIndex}`}
+              className={styles.cardCaption}
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 30 }}
+              animate={
+                prefersReducedMotion
+                  ? { opacity: 1, y: 0, transition: { duration: 0 } }
+                  : {
+                      opacity: 1,
+                      y: 0,
+                      transition: {
+                        opacity: { duration: 0.34, ease: "linear" },
+                        y: { duration: 0.32, ease: [0.22, 0.61, 0.36, 1] },
+                      },
+                    }
+              }
+              exit={
+                prefersReducedMotion
+                  ? { opacity: 0, transition: { duration: 0 } }
+                  : {
+                      opacity: 0,
+                      y: 0,
+                      transition: {
+                        opacity: { duration: 0.06, ease: [0.4, 0, 1, 1] },
+                        y: { duration: 0 },
+                      },
+                    }
+              }
+            >
+              <span className={styles.cardCaptionCategory}>
+                {resolveCategoryLabel(selectedItem)}
+              </span>
+              <span className={styles.cardCaptionTitle}>{selectedItem.title}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
       {interactionReady && selectedIndex === null && hoveredItem && (
         <div className={styles.hoverLabel}>
           <span className={styles.hoverCategory}>{resolveCategoryLabel(hoveredItem)}</span>
           <span className={styles.hoverTitle}>{hoveredItem.title}</span>
+        </div>
+      )}
+
+      {motionTestMode && (
+        <div className={styles.motionTestPanel} data-cursor-clickable="true">
+          <span className={styles.motionTestTitle}>RING PATH LAB</span>
+          <div className={styles.motionTestControls}>
+            {Object.entries(INTRO_PATHS).map(([pathId, config]) => (
+              <button
+                key={pathId}
+                type="button"
+                className={`${styles.motionTestButton} ${
+                  introPath === pathId ? styles.motionTestButtonActive : ""
+                }`}
+                aria-pressed={introPath === pathId}
+                onClick={() => replayIntro(pathId)}
+              >
+                {config.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className={`${styles.motionTestButton} ${styles.motionTestReplay}`}
+              onClick={() => replayIntro()}
+            >
+              REPLAY
+            </button>
+          </div>
+          <div className={styles.motionTestAdjustments}>
+            <label className={styles.motionTestSliderRow} htmlFor="ring-card-size">
+              <span className={styles.motionTestSliderLabel}>CARD SIZE</span>
+              <output
+                className={styles.motionTestSliderValue}
+                htmlFor="ring-card-size"
+              >
+                {cardSize.toFixed(2)}
+              </output>
+              <input
+                id="ring-card-size"
+                className={styles.motionTestRange}
+                type="range"
+                min="0.45"
+                max="0.9"
+                step="0.01"
+                value={cardSize}
+                aria-valuetext={cardSize.toFixed(2)}
+                onInput={(event) => setCardSize(Number(event.currentTarget.value))}
+              />
+            </label>
+            <label className={styles.motionTestSliderRow} htmlFor="ring-radius-size">
+              <span className={styles.motionTestSliderLabel}>RING SIZE</span>
+              <output
+                className={styles.motionTestSliderValue}
+                htmlFor="ring-radius-size"
+              >
+                {ringSize.toFixed(2)}
+              </output>
+              <input
+                id="ring-radius-size"
+                className={styles.motionTestRange}
+                type="range"
+                min="0.48"
+                max="0.84"
+                step="0.01"
+                value={ringSize}
+                aria-valuetext={ringSize.toFixed(2)}
+                onInput={(event) => setRingSize(Number(event.currentTarget.value))}
+              />
+            </label>
+          </div>
         </div>
       )}
     </div>
