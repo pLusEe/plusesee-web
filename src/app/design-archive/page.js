@@ -7,6 +7,7 @@ import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import styles from "./PersonalDesignLibrary.module.css";
 import defaultSiteContent from "../../data/site-content.json";
+import { openContextChatFromElement } from "../../lib/contextChat";
 
 const MEDIA_IMAGES_BASE = "/media/images";
 const DEFAULT_BOOK_COVER = `${MEDIA_IMAGES_BASE}/archive/Frame 1.png`;
@@ -228,6 +229,40 @@ export default function PersonalDesignLibraryPage() {
   const leftCopyright =
     libraryConfig?.leftCopyright || DEFAULT_LIBRARY_CONFIG.leftCopyright || "© 2026 plusesee.me";
 
+  const archiveContext = useMemo(
+    () => ({
+      id: "design-archive-book",
+      type: "archive",
+      title: book.title,
+      date: book.year,
+      description: `这是王佳奕的个人设计档案，类型为${book.type}，以${book.size}形式收录，创作与整理时间为${book.year}。`,
+      prompts: [
+        "什么是 Design Archive？",
+        "这本作品集创作于什么时候？",
+        "为什么要建立 Design Archive？",
+      ],
+      inputPlaceholder: "向 AI 询问 Design Archive",
+    }),
+    [book]
+  );
+
+  const archiveWelcomeContext = useMemo(
+    () => ({
+      id: "design-archive-welcome",
+      type: "archive",
+      title: "WELCOME TO THE ARCHIVE",
+      date: book.year,
+      description: `这里是王佳奕的 Design Archive，收录并整理了${book.year}期间的个人设计实践与作品。`,
+      prompts: [
+        "Design Archive 里收录了什么？",
+        "为什么采用档案的形式？",
+        "应该如何浏览这个页面？",
+      ],
+      inputPlaceholder: "向 AI 询问这个设计档案",
+    }),
+    [book.year]
+  );
+
   return (
     <div className={styles.page}>
       <main className={styles.main}>
@@ -237,6 +272,7 @@ export default function PersonalDesignLibraryPage() {
               <Link
                 href={book.href}
                 className={`${styles.coverLink} ${styles.coverTrigger}`}
+                aria-label={`打开${book.title}`}
               >
                 <div className={styles.coverWrap}>
                   <BookletCanvas coverUrl={book.cover} />
@@ -273,18 +309,26 @@ export default function PersonalDesignLibraryPage() {
             </div>
 
             <section className={styles.info}>
-              <div className={styles.metaRow}>
-                <span>[TYPE]</span>
-                <span>{book.type}</span>
-              </div>
-              <div className={styles.metaRow}>
-                <span>[SIZE]</span>
-                <span>{book.size}</span>
-              </div>
-              <div className={styles.metaRow}>
-                <span>[YEAR]</span>
-                <span>{book.year}</span>
-              </div>
+              <button
+                type="button"
+                className={styles.infoAsk}
+                data-cursor-ai="true"
+                aria-label={`向 AI 询问：${book.title}`}
+                onClick={(event) => openContextChatFromElement(event.currentTarget, archiveContext)}
+              >
+                <span className={styles.metaRow}>
+                  <span>[TYPE]</span>
+                  <span>{book.type}</span>
+                </span>
+                <span className={styles.metaRow}>
+                  <span>[SIZE]</span>
+                  <span>{book.size}</span>
+                </span>
+                <span className={styles.metaRow}>
+                  <span>[YEAR]</span>
+                  <span>{book.year}</span>
+                </span>
+              </button>
 
               <Link href={book.href} className={styles.openBtn}>
                 {book.openLabel}
@@ -293,10 +337,18 @@ export default function PersonalDesignLibraryPage() {
           </article>
         </section>
 
-        <p className={styles.rightNote} aria-hidden="true">
+        <button
+          type="button"
+          className={styles.rightNote}
+          data-cursor-ai="true"
+          aria-label="向 AI 询问：Welcome to the Archive"
+          onClick={(event) =>
+            openContextChatFromElement(event.currentTarget, archiveWelcomeContext)
+          }
+        >
           <span>{rightNote[0]}</span>
           <span>{rightNote[1]}</span>
-        </p>
+        </button>
 
         <p className={styles.leftCopyright} aria-hidden="true">
           {leftCopyright}

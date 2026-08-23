@@ -19,6 +19,10 @@
   opacity: 1;
 }
 
+.hidden {
+  opacity: 0;
+}
+
 .active {
   width: 120px;
   height: 120px;
@@ -38,6 +42,42 @@
   height: 10px;
   background-color: transparent;
   border: 0;
+}
+
+.ai {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  background-color: transparent;
+  color: #fff;
+}
+
+.aiCue {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.aiCue svg {
+  width: 24px;
+  height: 24px;
+  overflow: visible;
+}
+
+.aiStar {
+  fill: currentColor;
+  transform-box: view-box;
+  transform-origin: center;
+  animation: aiStarBreathe 2.4s cubic-bezier(0.37, 0, 0.63, 1) infinite;
+}
+
+.aiOrbitDot {
+  fill: currentColor;
+  transform-box: view-box;
+  transform-origin: 12px 12px;
+  animation: aiDotOrbit 1.85s linear infinite;
 }
 
 .directionCue {
@@ -81,8 +121,66 @@
   to { opacity: 1; }
 }
 
+@keyframes aiStarBreathe {
+  0%,
+  100% {
+    transform: scale(0.94);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes aiDotOrbit {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: translate(8.13px, -8.13px) scale(0.99);
+  }
+  12.5% {
+    opacity: 0.88;
+    transform: translate(8.05px, -3.45px) scale(1.06);
+  }
+  25% {
+    opacity: 1;
+    transform: translate(3.25px, 3.25px) scale(1.12);
+  }
+  37.5% {
+    opacity: 0.9;
+    transform: translate(-3.45px, 8.05px) scale(1.06);
+  }
+  50% {
+    opacity: 0.72;
+    transform: translate(-8.13px, 8.13px) scale(0.99);
+  }
+  62.5% {
+    opacity: 0.6;
+    transform: translate(-8.05px, 3.45px) scale(0.94);
+  }
+  75% {
+    opacity: 0.5;
+    transform: translate(-3.25px, -3.25px) scale(0.9);
+  }
+  87.5% {
+    opacity: 0.58;
+    transform: translate(3.45px, -8.05px) scale(0.94);
+  }
+}
+
 @media (max-width: 768px) {
   .cursor {
     display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor,
+  .aiCue svg {
+    transition: none;
+  }
+
+  .aiStar,
+  .aiOrbitDot {
+    animation: none;
   }
 }

@@ -1,12 +1,18 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import styles from "./FloatingAIChat.module.css";
 
 const DEFAULT_PLACEHOLDER = "想了解什么问题";
 const QUICK_PROMPTS = ["你的实习经历", "你的专业背景", "你的联系方式"];
+const CONTEXT_QUICK_PROMPTS = [
+  "这部分内容主要讲了什么？",
+  "你在其中负责什么？",
+  "最值得关注的是什么？",
+];
 const DRAG_THRESHOLD = 5;
+const CONTEXT_PANEL_EXIT_MS = 230;
 
 export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER }) {
   const pathname = usePathname();
@@ -16,16 +22,20 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
   const [loading, setLoading] = useState(false);
   const [typingIndex, setTypingIndex] = useState(null);
   const [position, setPosition] = useState(null);
+  const [activeContext, setActiveContext] = useState(null);
+  const [isPanelDragging, setIsPanelDragging] = useState(false);
   const rootRef = useRef(null);
+  const panelRef = useRef(null);
   const bottomRef = useRef(null);
   const textareaRef = useRef(null);
   const typingRef = useRef(null);
-  const dragRef = useRef(null);
+  const panelDragRef = useRef(null);
+  const contextCloseTimerRef = useRef(null);
   const lastMessage = messages[messages.length - 1];
   const lastMessageRole = lastMessage?.role;
   const lastMessageText = lastMessage?.text;
 
-  const clampPosition = (left, top) => {
+  const clampPosition = useCallback((left, top) => {
     const root = rootRef.current;
     const width = root?.offsetWidth || 50;
     const height = root?.offsetHeight || 50;
@@ -35,24 +45,96 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
       left: Math.min(Math.max(left, margin), window.innerWidth - width - margin),
       top: Math.min(Math.max(top, margin), window.innerHeight - height - margin),
     };
-  };
+  }, []);
+
+  const clampPanelPosition = useCallback((left, top) => {
+    const panel = panelRef.current;
+    const root = rootRef.current;
+    const panelWidth = panel?.offsetWidth || Math.min(390, window.innerWidth - 32);
+    const panelHeight = panel?.offsetHeight || Math.min(520, window.innerHeight - 104);
+    const rootHeight = root?.offsetHeight || 42;
+    const margin = 12;
+    const minTop = panelHeight + 10 + margin;
+    const maxTop = Math.max(minTop, window.innerHeight - rootHeight - margin);
+
+    return {
+      left: Math.min(Math.max(left, margin), window.innerWidth - panelWidth - margin),
+      top: Math.min(Math.max(top, minTop), maxTop),
+    };
+  }, []);
+
+  const clearPanelDrag = useCallback(() => {
+    panelDragRef.current = null;
+    setIsPanelDragging(false);
+  }, []);
+
+  const clearContextCloseTimer = useCallback(() => {
+    if (contextCloseTimerRef.current === null) return;
+    window.clearTimeout(contextCloseTimerRef.current);
+    contextCloseTimerRef.current = null;
+  }, []);
+
+  const closeChat = useCallback(() => {
+    clearPanelDrag();
+    setIsOpen(false);
+    if (!activeContext) return;
+
+    clearContextCloseTimer();
+    contextCloseTimerRef.current = window.setTimeout(() => {
+      setActiveContext(null);
+      setPosition(null);
+      contextCloseTimerRef.current = null;
+    }, CONTEXT_PANEL_EXIT_MS);
+  }, [activeContext, clearContextCloseTimer, clearPanelDrag]);
+
+  useEffect(
+    () => () => {
+      clearContextCloseTimer();
+      panelDragRef.current = null;
+    },
+    [clearContextCloseTimer]
+  );
 
   useEffect(() => {
+    clearContextCloseTimer();
+    clearPanelDrag();
     setPosition(null);
     setIsOpen(false);
-  }, [pathname]);
+    setActiveContext(null);
+  }, [clearContextCloseTimer, clearPanelDrag, pathname]);
+
+  useEffect(() => {
+    const handleContextOpen = (event) => {
+      const detail = event?.detail || {};
+      const nextContext = detail.context;
+      const nextPosition = detail.position;
+
+      clearContextCloseTimer();
+      clearPanelDrag();
+      if (nextContext?.title) setActiveContext(nextContext);
+      if (Number.isFinite(nextPosition?.left) && Number.isFinite(nextPosition?.top)) {
+        setPosition(clampPosition(nextPosition.left, nextPosition.top));
+      }
+      setIsOpen(true);
+    };
+
+    window.addEventListener("plusesee:open-context-chat", handleContextOpen);
+    return () => window.removeEventListener("plusesee:open-context-chat", handleContextOpen);
+  }, [clampPosition, clearContextCloseTimer, clearPanelDrag]);
 
   useEffect(() => {
     const handleResize = () => {
       setPosition((currentPosition) => {
         if (!currentPosition) return currentPosition;
-        return clampPosition(currentPosition.left, currentPosition.top);
+        return isOpen
+          ? clampPanelPosition(currentPosition.left, currentPosition.top)
+          : clampPosition(currentPosition.left, currentPosition.top);
       });
     };
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [clampPanelPosition, clampPosition, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -67,12 +149,24 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
 
   useEffect(() => {
     const handleKeyDown = (event) => {
-      if (event.key === "Escape") setIsOpen(false);
+      if (event.key === "Escape") closeChat();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [closeChat]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handlePointerDownOutside = (event) => {
+      if (rootRef.current?.contains(event.target)) return;
+      closeChat();
+    };
+
+    document.addEventListener("pointerdown", handlePointerDownOutside, true);
+    return () => document.removeEventListener("pointerdown", handlePointerDownOutside, true);
+  }, [closeChat, isOpen]);
 
   useEffect(() => {
     const lastIdx = messages.length - 1;
@@ -123,6 +217,21 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
         content: message.text,
       }));
 
+      if (activeContext && apiMessages.length > 0) {
+        const lastIndex = apiMessages.length - 1;
+        apiMessages[lastIndex] = {
+          ...apiMessages[lastIndex],
+          content: [
+            `当前页面正在查看的作品：${activeContext.title}`,
+            activeContext.date ? `作品时间：${activeContext.date}` : "",
+            activeContext.description ? `作品介绍：${activeContext.description}` : "",
+            `用户问题：${text}`,
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        };
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -149,6 +258,15 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
     sendMessage();
   };
 
+  const contextPrompts = Array.isArray(activeContext?.prompts)
+    ? activeContext.prompts.filter((prompt) => typeof prompt === "string" && prompt.trim()).slice(0, 4)
+    : [];
+  const quickPrompts = contextPrompts.length > 0
+    ? contextPrompts
+    : activeContext
+      ? CONTEXT_QUICK_PROMPTS
+      : QUICK_PROMPTS;
+
   const handleKeyDown = (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -163,51 +281,63 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
     if (typingRef.current) window.clearInterval(typingRef.current);
   };
 
-  const handleLauncherPointerDown = (event) => {
+  const handleLauncherClick = () => {
+    if (!isOpen) {
+      setIsOpen(true);
+      return;
+    }
+    textareaRef.current?.focus();
+  };
+
+  const handlePanelPointerDown = (event) => {
     if (event.button !== 0) return;
+    if (event.target.closest("button, a, input, textarea, select, [role='button']")) return;
 
-    const rect = rootRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    const panel = panelRef.current;
+    if (!panel) return;
 
-    dragRef.current = {
+    const rect = panel.getBoundingClientRect();
+    const drag = {
+      pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       originLeft: rect.left,
       originTop: rect.top,
-      moved: false,
+      panelHeight: rect.height,
+      active: false,
     };
 
-    event.currentTarget.setPointerCapture(event.pointerId);
+    panelDragRef.current = drag;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
-  const handleLauncherPointerMove = (event) => {
-    const drag = dragRef.current;
-    if (!drag) return;
+  const handlePanelPointerMove = (event) => {
+    const drag = panelDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
 
     const dx = event.clientX - drag.startX;
     const dy = event.clientY - drag.startY;
-    if (!drag.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
+    if (!drag.active) {
+      if (Math.hypot(dx, dy) <= DRAG_THRESHOLD) return;
+      drag.active = true;
+      setIsPanelDragging(true);
+    }
 
-    drag.moved = true;
-    setPosition(clampPosition(drag.originLeft + dx, drag.originTop + dy));
+    event.preventDefault();
+    setPosition(
+      clampPanelPosition(
+        drag.originLeft + dx,
+        drag.originTop + dy + drag.panelHeight + 10
+      )
+    );
   };
 
-  const handleLauncherPointerUp = (event) => {
-    const drag = dragRef.current;
-    dragRef.current = null;
-    event.currentTarget.releasePointerCapture(event.pointerId);
-
-    if (drag?.moved) {
-      const dx = event.clientX - drag.startX;
-      const dy = event.clientY - drag.startY;
-      const nextPosition = clampPosition(drag.originLeft + dx, drag.originTop + dy);
-      setPosition(nextPosition);
-      return;
-    }
-
-    if (drag) {
-      setIsOpen((value) => !value);
-    }
+  const handlePanelPointerUp = (event) => {
+    const drag = panelDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    panelDragRef.current = null;
+    setIsPanelDragging(false);
   };
 
   return (
@@ -215,11 +345,22 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
       ref={rootRef}
       className={`${styles.floatingChat} ${isOpen ? styles.open : ""} ${
         position ? styles.dragged : ""
+      } ${activeContext ? styles.contextual : ""} ${
+        isPanelDragging ? styles.panelDragging : ""
       }`}
       style={position ? { left: `${position.left}px`, top: `${position.top}px` } : undefined}
       aria-live="polite"
     >
-      <div className={styles.panel} aria-hidden={!isOpen}>
+      <div
+        ref={panelRef}
+        className={styles.panel}
+        aria-hidden={!isOpen}
+        data-dragging={isPanelDragging ? "true" : "false"}
+        onPointerDown={handlePanelPointerDown}
+        onPointerMove={handlePanelPointerMove}
+        onPointerUp={handlePanelPointerUp}
+        onPointerCancel={handlePanelPointerUp}
+      >
         <div className={styles.panelActions}>
           <button className={styles.iconButton} type="button" onClick={resetChat} aria-label="新对话">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -232,17 +373,21 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
               />
             </svg>
           </button>
-          <button className={styles.closeButton} type="button" onClick={() => setIsOpen(false)} aria-label="关闭">
-            <span aria-hidden="true" />
-          </button>
         </div>
+
+        {activeContext ? (
+          <div className={styles.contextBar}>
+            <span>ASKING ABOUT</span>
+            <strong>{activeContext.title}</strong>
+          </div>
+        ) : null}
 
         <div className={styles.messagesArea}>
           {messages.length === 0 ? (
             <div className={styles.emptyState}>
               <p>想了解什么问题？</p>
               <div className={styles.quickPrompts}>
-                {QUICK_PROMPTS.map((prompt) => (
+                {quickPrompts.map((prompt) => (
                   <button key={prompt} type="button" onClick={() => sendMessage(prompt)}>
                     {prompt}
                   </button>
@@ -287,7 +432,10 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={inputPlaceholder}
+              placeholder={
+                activeContext?.inputPlaceholder ||
+                (activeContext ? "向 AI 询问这部分内容" : inputPlaceholder)
+              }
               rows={1}
             />
             <button
@@ -303,28 +451,18 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
       <button
         className={styles.launcher}
         type="button"
-        onPointerDown={handleLauncherPointerDown}
-        onPointerMove={handleLauncherPointerMove}
-        onPointerUp={handleLauncherPointerUp}
-        aria-label={isOpen ? "关闭项目问答，可拖动" : "打开项目问答，可拖动"}
+        onClick={handleLauncherClick}
+        aria-label={isOpen ? "项目问答已打开" : "打开项目问答"}
         aria-expanded={isOpen}
+        data-cursor-hidden="true"
       >
-        {isOpen ? (
-          <span className={styles.launchClose} aria-hidden="true" />
-        ) : (
-          <>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M7.5 16.5 4 20V6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5V14a2.5 2.5 0 0 1-2.5 2.5h-10Z"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className={styles.launchText}>AI</span>
-          </>
-        )}
+        <span className={styles.dockLabel} aria-hidden="true">ASK AI</span>
+        <span className={styles.dockSparkle} aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M12 2.5c.45 5.5 3.55 8.6 9 9-5.45.45-8.55 3.55-9 9-.45-5.45-3.55-8.55-9-9 5.45-.4 8.55-3.5 9-9Z" />
+            <circle cx="19.2" cy="4.8" r="1.25" />
+          </svg>
+        </span>
       </button>
     </aside>
   );

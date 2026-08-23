@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import styles from "./Bio.module.css";
 import defaultSiteContent from "../../data/site-content.json";
+import { openContextChatFromElement } from "../../lib/contextChat";
 
 const defaultBio = defaultSiteContent.bio;
 
@@ -251,26 +252,94 @@ function renderMetaItem(item, idx) {
   );
 }
 
-function renderFocusItem(item, idx) {
+function renderFocusItem(item, idx, openBioChat) {
   if (isRecord(item)) {
+    const title = [item.cn, item.en].filter(Boolean).join(" / ");
     return (
       <li key={`${item.cn || item.en}-${idx}`} className={styles.compactItem}>
-        <PairedText cn={item.cn} en={item.en} />
+        <button
+          type="button"
+          className={styles.aiContextTrigger}
+          data-cursor-ai="true"
+          aria-label={`向 AI 询问：${title}`}
+          onClick={(event) =>
+            openBioChat(event.currentTarget, {
+              id: `bio-focus-${idx}`,
+              type: "bio",
+              title,
+              description: `王佳奕的能力方向：${title}`,
+              prompts: [
+                `${item.cn || title}主要包含哪些能力？`,
+                `你如何把${item.cn || title}运用到项目中？`,
+                "有哪些相关作品可以看？",
+              ],
+              inputPlaceholder: "向 AI 询问这个能力方向",
+            })
+          }
+        >
+          <PairedText cn={item.cn} en={item.en} />
+        </button>
       </li>
     );
   }
 
-  return <li key={`${item}-${idx}`}>{item}</li>;
+  return (
+    <li key={`${item}-${idx}`} className={styles.compactItem}>
+      <button
+        type="button"
+        className={styles.aiContextTrigger}
+        data-cursor-ai="true"
+        aria-label={`向 AI 询问：${item}`}
+        onClick={(event) =>
+          openBioChat(event.currentTarget, {
+            id: `bio-focus-${idx}`,
+            type: "bio",
+            title: item,
+            description: `王佳奕的能力方向：${item}`,
+            prompts: [
+              `${item}主要包含哪些能力？`,
+              `你如何把${item}运用到项目中？`,
+              "有哪些相关作品可以看？",
+            ],
+            inputPlaceholder: "向 AI 询问这个能力方向",
+          })
+        }
+      >
+        {item}
+      </button>
+    </li>
+  );
 }
 
-function renderProjectItem(item, idx) {
+function renderProjectItem(item, idx, openBioChat) {
   if (isRecord(item)) {
     return (
       <li key={`${item.title}-${idx}`} className={styles.projectItem}>
-        <div className={styles.itemTopline}>
-          <span className={styles.primaryLine}>{item.title}</span>
-          {item.role ? <span className={styles.projectRole}>{item.role}</span> : null}
-        </div>
+        <button
+          type="button"
+          className={styles.aiContextTrigger}
+          data-cursor-ai="true"
+          aria-label={`向 AI 询问：${item.title}`}
+          onClick={(event) =>
+            openBioChat(event.currentTarget, {
+              id: `bio-project-${idx}`,
+              type: "bio",
+              title: item.title,
+              description: [item.title, item.role].filter(Boolean).join("；"),
+              prompts: [
+                `${item.title}是什么项目？`,
+                "你在这个项目中负责什么？",
+                "这个项目体现了哪些能力？",
+              ],
+              inputPlaceholder: "向 AI 询问这个项目经历",
+            })
+          }
+        >
+          <div className={styles.itemTopline}>
+            <span className={styles.primaryLine}>{item.title}</span>
+            {item.role ? <span className={styles.projectRole}>{item.role}</span> : null}
+          </div>
+        </button>
       </li>
     );
   }
@@ -278,23 +347,54 @@ function renderProjectItem(item, idx) {
   return <li key={`${item}-${idx}`}>{item}</li>;
 }
 
-function renderWorkItem(item, idx) {
+function renderWorkItem(item, idx, openBioChat) {
   if (isRecord(item)) {
+    const title = [item.companyCn, item.roleCn].filter(Boolean).join(" · ");
     return (
       <li key={`${item.companyCn}-${item.period}-${idx}`} className={styles.experienceItem}>
-        <div className={styles.itemTopline}>
-          <div className={styles.experienceGroup}>
-            <PairedText cn={item.companyCn} en={item.companyEn} />
-          </div>
-          <div className={styles.experienceRight}>
-            <div className={styles.experienceRole}>
-              <PairedText cn={item.roleCn} />
+        <button
+          type="button"
+          className={styles.aiContextTrigger}
+          data-cursor-ai="true"
+          aria-label={`向 AI 询问：${title}`}
+          onClick={(event) =>
+            openBioChat(event.currentTarget, {
+              id: `bio-work-${idx}`,
+              type: "bio",
+              title,
+              date: item.period,
+              description: [
+                item.companyEn,
+                item.roleCn,
+                item.locationCn,
+                item.period,
+                ...(Array.isArray(item.highlights) ? item.highlights : []),
+              ]
+                .filter(Boolean)
+                .join("\n"),
+              prompts: [
+                `你在${item.companyCn}负责什么？`,
+                "这段经历中最重要的项目是什么？",
+                "这段经历体现了哪些能力？",
+              ],
+              inputPlaceholder: "向 AI 询问这段工作经历",
+            })
+          }
+        >
+          <div className={styles.itemTopline}>
+            <div className={styles.experienceGroup}>
+              <PairedText cn={item.companyCn} en={item.companyEn} />
             </div>
-            <div className={styles.experienceMeta}>
-              <PairedText cn={[item.locationCn, item.period].filter(Boolean).join(" · ")} />
+            <div className={styles.experienceRight}>
+              <div className={styles.experienceRole}>
+                <PairedText cn={item.roleCn} />
+              </div>
+              <div className={styles.experienceMeta}>
+                <PairedText cn={[item.locationCn, item.period].filter(Boolean).join(" · ")} />
+              </div>
             </div>
           </div>
-        </div>
+        </button>
       </li>
     );
   }
@@ -335,6 +435,8 @@ export default function BioPage() {
 
   const metaItems = useMemo(() => (Array.isArray(bio.meta) ? bio.meta : []), [bio.meta]);
 
+  const openBioChat = openContextChatFromElement;
+
   return (
     <div className={styles.page}>
       <div className={styles.gridNoise} aria-hidden="true"></div>
@@ -362,7 +464,7 @@ export default function BioPage() {
             <article className={styles.block}>
               <h2>Focus / 方向</h2>
               <ul>
-                {(bio.services || []).map(renderFocusItem)}
+                {(bio.services || []).map((item, idx) => renderFocusItem(item, idx, openBioChat))}
               </ul>
             </article>
 
@@ -370,7 +472,7 @@ export default function BioPage() {
               <article className={styles.block}>
                 <h2>Work Experience / 工作经历</h2>
                 <ul>
-                  {(bio.workExperience || []).map(renderWorkItem)}
+                  {(bio.workExperience || []).map((item, idx) => renderWorkItem(item, idx, openBioChat))}
                 </ul>
               </article>
             ) : null}
@@ -379,7 +481,9 @@ export default function BioPage() {
               <article className={styles.block}>
                 <h2>Project Experience / 项目经历</h2>
                 <ul>
-                  {(bio.projectExperience || []).map(renderProjectItem)}
+                  {(bio.projectExperience || []).map((item, idx) =>
+                    renderProjectItem(item, idx, openBioChat)
+                  )}
                 </ul>
               </article>
             ) : null}

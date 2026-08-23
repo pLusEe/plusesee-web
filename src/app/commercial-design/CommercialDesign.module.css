@@ -137,6 +137,13 @@
 
 .projectMetaMotion {
   width: 100%;
+  border-radius: 4px;
+  outline: none;
+}
+
+.projectMetaMotion:focus-visible {
+  outline: 1px solid rgba(0, 0, 0, 0.28);
+  outline-offset: 8px;
 }
 
 .kicker {

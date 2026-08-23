@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ProgressiveImage from "../../components/ProgressiveImage";
+import { openContextChatFromElement } from "../../lib/contextChat";
 import styles from "./CommercialDesign.module.css";
 
 const isVideoUrl = (url) => /\.(mp4|webm|mov|m4v|ogg)$/i.test(String(url || "").trim());
@@ -267,6 +268,25 @@ export default function CommercialDesignPage() {
 
   const activeProject = projects.find((project) => project.id === activeProjectId) || projects[0];
 
+  const openProjectChat = useCallback(
+    (target) => {
+      openContextChatFromElement(target, {
+        id: activeProject.id,
+        type: "project",
+        title: activeProject.title,
+        date: activeProject.date,
+        description: activeProject.paragraphs.join("\n").slice(0, 1400),
+        prompts: [
+          `${activeProject.title}解决了什么问题？`,
+          `你在${activeProject.title}中具体负责什么？`,
+          "这个项目最终如何落地？",
+        ],
+        inputPlaceholder: "向 AI 询问这个作品",
+      });
+    },
+    [activeProject]
+  );
+
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const requestedProjectId = searchParams.get("project");
@@ -319,6 +339,16 @@ export default function CommercialDesignPage() {
               <motion.div
                 key={activeProject.id}
                 className={styles.projectMetaMotion}
+                data-cursor-ai="true"
+                role="button"
+                tabIndex={0}
+                aria-label={`向 AI 询问：${activeProject.title}`}
+                onClick={(event) => openProjectChat(event.currentTarget)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  event.preventDefault();
+                  openProjectChat(event.currentTarget);
+                }}
                 initial={{ opacity: 0, y: 22 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -22 }}
