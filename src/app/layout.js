@@ -46,6 +46,11 @@ export default function RootLayout({ children }) {
               >
                 <NavFlipLabel en="design archive" zh="设计档案" />
               </Link>
+              <span className="nav-coming-soon" aria-disabled="true">
+                <span className="nav-float">
+                  <NavFlipLabel en="ai playground" zh="AI 实践" />
+                </span>
+              </span>
               <Link href="/bio" className="nav-float" aria-label="bio / 简介">
                 <NavFlipLabel en="bio" zh="简介" />
               </Link>

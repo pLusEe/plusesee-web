@@ -117,6 +117,13 @@ body.logo-scroll-enabled.logo-hidden .logo-area {
   line-height: 1;
 }
 
+.nav-coming-soon {
+  display: inline-flex;
+  align-items: flex-start;
+  opacity: 0.46;
+  cursor: default;
+}
+
 .nav-float-track {
   display: flex;
   flex-direction: column;
