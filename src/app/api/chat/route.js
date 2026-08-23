@@ -60,6 +60,15 @@ const normalizeMessages = (messages) => {
     .filter(Boolean);
 };
 
+const normalizeReplyStyle = (content) =>
+  content
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu, "")
+    .replace(/[\uFE0F\u200D]/g, "")
+    .replace(/^\s*\*\*([^*]+)\*\*[：:]\s*/gm, "- $1：")
+    .replace(/\*\*/g, "")
+    .replace(/\s*[（(]?\s*\d+\s*字\s*[）)]?\s*$/u, "")
+    .trim();
+
 const cleanText = (value) => (typeof value === "string" ? value.trim() : "");
 
 const joinText = (...values) => values.flat(Infinity).map(cleanText).filter(Boolean).join("；");
@@ -252,7 +261,7 @@ const getCloudflareReply = (data) => {
 
   if (typeof content !== "string") return "";
 
-  return content.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
+  return normalizeReplyStyle(content.replace(/<think>[\s\S]*?<\/think>\s*/gi, ""));
 };
 
 const getModelScopeReply = (data) => {
@@ -260,7 +269,7 @@ const getModelScopeReply = (data) => {
 
   if (typeof content !== "string") return "";
 
-  return content.replace(/<think>[\s\S]*?<\/think>\s*/gi, "").trim();
+  return normalizeReplyStyle(content.replace(/<think>[\s\S]*?<\/think>\s*/gi, ""));
 };
 
 const fetchWithTimeout = async (url, options) => {
