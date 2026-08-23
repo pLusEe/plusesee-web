@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
@@ -31,8 +31,6 @@ const DEFAULT_FALLING_IMAGES = [
 
 const DEFAULT_LIBRARY_CONFIG = defaultSiteContent.personalDesign.library;
 const ARCHIVE_COVER_ASPECT = 867 / 1812;
-
-const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 function PlaceholderBook() {
   return (
@@ -163,19 +161,7 @@ function BookletCanvas({ coverUrl }) {
 }
 
 export default function PersonalDesignLibraryPage() {
-  const stageRef = useRef(null);
-  const cardsRef = useRef([]);
-  const dragRef = useRef({
-    id: null,
-    offsetX: 0,
-    offsetY: 0,
-    lastTime: 0,
-    vx: 0,
-    vy: 0,
-  });
-  const [cards, setCards] = useState([]);
   const [libraryConfig, setLibraryConfig] = useState(DEFAULT_LIBRARY_CONFIG);
-  const [fallingActive, setFallingActive] = useState(false);
 
   useEffect(() => {
     fetch("/api/content")
@@ -213,18 +199,23 @@ export default function PersonalDesignLibraryPage() {
     [libraryConfig]
   );
 
-  const fallingImages = useMemo(() => {
+  const printImages = useMemo(() => {
     const base =
       Array.isArray(libraryConfig?.fallingImages) && libraryConfig.fallingImages.length > 0
         ? libraryConfig.fallingImages
         : DEFAULT_FALLING_IMAGES;
 
-    return base.map((item, index) => ({
-      src: normalizeImageUrl(item?.src, DEFAULT_FALLBACK_IMAGE),
-      rotate: Number.isFinite(item?.rotate) ? item.rotate : index % 2 ? 0 : 270,
-      width: Number.isFinite(item?.width) ? item.width : 1279,
-      height: Number.isFinite(item?.height) ? item.height : 1706,
-    }));
+    return base.slice(0, 4).map((item, index) => {
+      const rotate = Number.isFinite(item?.rotate) ? item.rotate : index % 2 ? 0 : 270;
+      return {
+        id: index,
+        src: normalizeImageUrl(item?.src, DEFAULT_FALLBACK_IMAGE),
+        rotate,
+        width: Number.isFinite(item?.width) ? item.width : 1279,
+        height: Number.isFinite(item?.height) ? item.height : 1706,
+        rotated: rotate === 90 || rotate === 270,
+      };
+    });
   }, [libraryConfig]);
 
   const rightNote = useMemo(() => {
@@ -237,249 +228,12 @@ export default function PersonalDesignLibraryPage() {
   const leftCopyright =
     libraryConfig?.leftCopyright || DEFAULT_LIBRARY_CONFIG.leftCopyright || "© 2026 plusesee.me";
 
-  const getLocalPoint = useCallback((event) => {
-    const stage = stageRef.current;
-    if (!stage) return null;
-    const rect = stage.getBoundingClientRect();
-    return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-    };
-  }, [fallingImages]);
-
-  const buildCards = useCallback(() => {
-    const stage = stageRef.current;
-    if (!stage) return;
-
-    const width = stage.clientWidth;
-    const height = stage.clientHeight;
-    const base = clamp(width * 0.17, 128, 196);
-    const gap = clamp(width * 0.012, 7, 12);
-    let cursor = clamp(width * 0.04, 12, 34);
-
-    const next = fallingImages.map((item, index) => {
-      const ratio = item.width / item.height;
-      const rotated = item.rotate === 90 || item.rotate === 270;
-      const w = rotated ? base : base * ratio;
-      const h = rotated ? base * ratio : base;
-      const y = -h - 36 - index * (h * 0.7);
-      const x = cursor;
-      cursor += w + gap;
-      return {
-        id: index,
-        ...item,
-        ratio,
-        rotated,
-        w,
-        h,
-        x,
-        y,
-        vx: (index - (fallingImages.length - 1) / 2) * 20,
-        vy: 0,
-        z: index + 1,
-      };
-    });
-
-    const maxRight = Math.max(...next.map((card) => card.x + card.w));
-    if (maxRight > width - 8) {
-      const shift = maxRight - (width - 8);
-      next.forEach((card) => {
-        card.x = clamp(card.x - shift, 8, Math.max(8, width - card.w - 8));
-      });
-    }
-
-    cardsRef.current = next;
-    setCards(next);
-  }, [fallingImages]);
-
-  const triggerFallingPreview = useCallback(() => {
-    if (cardsRef.current.length > 0) return;
-    dragRef.current = {
-      id: null,
-      offsetX: 0,
-      offsetY: 0,
-      lastTime: 0,
-      vx: 0,
-      vy: 0,
-    };
-    setFallingActive(true);
-    window.requestAnimationFrame(buildCards);
-  }, [buildCards]);
-
-  useEffect(() => {
-    if (!fallingActive) return;
-    const frame = window.requestAnimationFrame(buildCards);
-    window.addEventListener("resize", buildCards);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", buildCards);
-    };
-  }, [buildCards, fallingActive]);
-
-  useEffect(() => {
-    const onPointerMove = (event) => {
-      const drag = dragRef.current;
-      if (drag.id === null) return;
-      const local = getLocalPoint(event);
-      const stage = stageRef.current;
-      if (!local || !stage) return;
-
-      const next = [...cardsRef.current];
-      const idx = next.findIndex((card) => card.id === drag.id);
-      if (idx < 0) return;
-      const card = next[idx];
-      const now = performance.now();
-      const dt = Math.max(0.001, (now - drag.lastTime) / 1000);
-
-      const x = clamp(local.x - drag.offsetX, 0, stage.clientWidth - card.w);
-      const y = clamp(local.y - drag.offsetY, -card.h * 1.4, stage.clientHeight - card.h - 24);
-
-      drag.vx = (x - card.x) / dt;
-      drag.vy = (y - card.y) / dt;
-      drag.lastTime = now;
-
-      next[idx] = { ...card, x, y, vx: 0, vy: 0 };
-      cardsRef.current = next;
-      setCards(next);
-    };
-
-    const releaseDrag = () => {
-      const drag = dragRef.current;
-      if (drag.id === null) return;
-
-      const next = [...cardsRef.current];
-      const idx = next.findIndex((card) => card.id === drag.id);
-      if (idx >= 0) {
-        const card = next[idx];
-        next[idx] = {
-          ...card,
-          vx: drag.vx * 0.62,
-          vy: drag.vy * 0.62,
-        };
-      }
-
-      cardsRef.current = next;
-      setCards(next);
-      dragRef.current = {
-        id: null,
-        offsetX: 0,
-        offsetY: 0,
-        lastTime: 0,
-        vx: 0,
-        vy: 0,
-      };
-    };
-
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", releaseDrag);
-    window.addEventListener("pointercancel", releaseDrag);
-
-    return () => {
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", releaseDrag);
-      window.removeEventListener("pointercancel", releaseDrag);
-    };
-  }, [getLocalPoint]);
-
-  useEffect(() => {
-    let raf = 0;
-    let prev = performance.now();
-    const gravity = 2250;
-    const bounce = 0.28;
-    const wallBounce = 0.36;
-    const floorFriction = 0.91;
-
-    const tick = (now) => {
-      const dt = Math.min(0.033, (now - prev) / 1000);
-      prev = now;
-      const stage = stageRef.current;
-
-      if (stage && cardsRef.current.length > 0) {
-        const width = stage.clientWidth;
-        const height = stage.clientHeight;
-        const dragId = dragRef.current.id;
-
-        const next = cardsRef.current.map((card) => {
-          if (card.id === dragId) return card;
-
-          let x = card.x + card.vx * dt;
-          let y = card.y + card.vy * dt;
-          let vx = card.vx;
-          let vy = card.vy + gravity * dt;
-
-          const floor = height - card.h - 24;
-          const maxX = width - card.w;
-
-          if (x < 0) {
-            x = 0;
-            vx = Math.abs(vx) * wallBounce;
-          } else if (x > maxX) {
-            x = maxX;
-            vx = -Math.abs(vx) * wallBounce;
-          }
-
-          if (y > floor) {
-            y = floor;
-            vy = Math.abs(vy) < 46 ? 0 : -Math.abs(vy) * bounce;
-            vx *= floorFriction;
-          }
-
-          vx *= 0.997;
-          return { ...card, x, y, vx, vy };
-        });
-
-        cardsRef.current = next;
-        setCards(next);
-      }
-
-      raf = window.requestAnimationFrame(tick);
-    };
-
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
-  }, []);
-
-  const handleCardPointerDown = useCallback(
-    (event, id) => {
-      event.preventDefault();
-      const local = getLocalPoint(event);
-      if (!local) return;
-
-      const next = [...cardsRef.current];
-      const idx = next.findIndex((card) => card.id === id);
-      if (idx < 0) return;
-      const target = next[idx];
-      const maxZ = next.reduce((max, card) => Math.max(max, card.z), 0);
-
-      next[idx] = { ...target, z: maxZ + 1, vx: 0, vy: 0 };
-      cardsRef.current = next;
-      setCards(next);
-
-      dragRef.current = {
-        id,
-        offsetX: local.x - target.x,
-        offsetY: local.y - target.y,
-        lastTime: performance.now(),
-        vx: 0,
-        vy: 0,
-      };
-    },
-    [getLocalPoint]
-  );
-
   return (
     <div className={styles.page}>
       <main className={styles.main}>
         <section className={styles.books}>
           <article className={`${styles.book} ${styles.bookWithPreview}`}>
-            <div
-              className={styles.coverStage}
-              onPointerEnter={triggerFallingPreview}
-              onPointerOver={triggerFallingPreview}
-              onMouseEnter={triggerFallingPreview}
-              onMouseOver={triggerFallingPreview}
-              onFocus={triggerFallingPreview}
-            >
+            <div className={styles.coverStage}>
               <Link
                 href={book.href}
                 className={`${styles.coverLink} ${styles.coverTrigger}`}
@@ -489,29 +243,23 @@ export default function PersonalDesignLibraryPage() {
                 </div>
               </Link>
 
-              <div ref={stageRef} className={styles.fallStage} aria-hidden="true">
-                {cards.map((item) => (
+              <div className={styles.printPreview} aria-hidden="true">
+                {printImages.map((item, index) => (
                   <div
                     key={item.id}
-                    className={`${styles.fallCard} ${item.rotated ? styles.fallCardRotated : ""}`}
-                    onPointerDown={(event) => handleCardPointerDown(event, item.id)}
+                    className={`${styles.printCard} ${styles[`printCard${index + 1}`]} ${item.rotated ? styles.printCardRotated : ""}`}
                     style={{
-                      width: `${item.w}px`,
-                      height: `${item.h}px`,
-                      transform: `translate3d(${item.x}px, ${item.y}px, 0)`,
-                      zIndex: item.z,
-                      "--card-width": `${item.w}px`,
-                      "--card-height": `${item.h}px`,
+                      "--preview-delay": `${index * 45}ms`,
                     }}
                   >
                     <img
                       src={item.src}
                       alt=""
-                      className={`${styles.fallImage} ${
+                      className={`${styles.printImage} ${
                         item.rotate === 90
-                          ? styles.fallImageRotate90
+                          ? styles.printImageRotate90
                           : item.rotate === 270
-                            ? styles.fallImageRotate270
+                            ? styles.printImageRotate270
                             : ""
                       }`}
                       loading="lazy"
@@ -520,7 +268,7 @@ export default function PersonalDesignLibraryPage() {
                     />
                   </div>
                 ))}
-                {cards.length > 0 && <span className={styles.fallStageCaption}>Printed materials</span>}
+                <span className={styles.printPreviewCaption}>[FORMAT] PRINTED EDITION</span>
               </div>
             </div>
 

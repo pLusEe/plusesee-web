@@ -94,7 +94,7 @@ const resolveJumpTarget = (item) => {
 };
 
 const TAG_LABELS = {
-  commercial: "commercial design",
+  commercial: "design on view",
   personalLibrary: "design archive2019-2024",
   personalBook: "design archive2019-2024",
 };
@@ -110,7 +110,7 @@ const resolveCategoryLabel = (item) => {
     mediaPath.includes("/media/images/commercial-design/") ||
     mediaPath.includes("/media/images/thumbnail/")
   ) {
-    return "commercial design";
+    return "design on view";
   }
 
   if (

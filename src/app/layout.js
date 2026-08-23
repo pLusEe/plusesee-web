@@ -35,9 +35,9 @@ export default function RootLayout({ children }) {
               <Link
                 href="/commercial-design"
                 className="nav-float"
-                aria-label="commercial design / 商业设计"
+                aria-label="design on view / 近期作品"
               >
-                <NavFlipLabel en="commercial design" zh="商业设计" />
+                <NavFlipLabel en="design on view" zh="近期作品" />
               </Link>
               <Link
                 href="/design-archive"
