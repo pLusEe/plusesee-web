@@ -403,7 +403,19 @@ export async function POST(req) {
       .reverse()
       .find((message) => message.role === "user")?.content;
     const websiteContext = await readWebsiteContext(latestUserMessage);
-    const effectiveSystemPrompt = [aiConfig.systemPrompt, websiteContext].filter(Boolean).join("\n\n");
+    const useStructuredFormat = /(详细|展开|分别|对比|比较|列出|逐项|具体介绍|有哪些)/u.test(
+      latestUserMessage || ""
+    );
+    const responseStyleDirective = useStructuredFormat
+      ? "本轮回答可以使用列表：先直接回答，再用总共两到三条短列表梳理重点。"
+      : "本轮回答必须只使用一到两个自然段，禁止使用任何列表、标题或分隔线。";
+    const effectiveSystemPrompt = [
+      aiConfig.systemPrompt,
+      websiteContext,
+      responseStyleDirective,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
     let content = "";
     try {
       content = await requestCloudflare({
