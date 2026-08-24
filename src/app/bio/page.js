@@ -267,6 +267,7 @@ function renderFocusItem(item, idx, openBioChat) {
               id: `bio-focus-${idx}`,
               type: "bio",
               title,
+              intro: "这是当前持续发展的能力方向，重点关注它如何在真实项目中转化为体验与实现。",
               description: `王佳奕的能力方向：${title}`,
               prompts: [
                 `${item.cn || title}主要包含哪些能力？`,
@@ -295,6 +296,7 @@ function renderFocusItem(item, idx, openBioChat) {
             id: `bio-focus-${idx}`,
             type: "bio",
             title: item,
+            intro: "这是当前持续发展的能力方向，重点关注它如何在真实项目中转化为体验与实现。",
             description: `王佳奕的能力方向：${item}`,
             prompts: [
               `${item}主要包含哪些能力？`,
@@ -325,6 +327,7 @@ function renderProjectItem(item, idx, openBioChat) {
               id: `bio-project-${idx}`,
               type: "bio",
               title: item.title,
+              intro: `这是一段关于${item.title}的项目经历${item.role ? `，在其中负责${item.role}` : ""}。`,
               description: [item.title, item.role].filter(Boolean).join("；"),
               prompts: [
                 `${item.title}是什么项目？`,
@@ -363,6 +366,7 @@ function renderWorkItem(item, idx, openBioChat) {
               type: "bio",
               title,
               date: item.period,
+              intro: `这段经历发生在${item.companyCn}${item.roleCn ? `，职位为${item.roleCn}` : ""}${item.period ? `，时间为${item.period}` : ""}。`,
               description: [
                 item.companyEn,
                 item.roleCn,

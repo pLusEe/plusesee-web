@@ -235,7 +235,8 @@ export default function PersonalDesignLibraryPage() {
       type: "archive",
       title: book.title,
       date: book.year,
-      description: `这是王佳奕的个人设计档案，类型为${book.type}，以${book.size}形式收录，创作与整理时间为${book.year}。`,
+      intro: `这本 Design Archive 将 ${book.year} 年的个人设计实践整理为第一册作品集，未来还会以新的册次持续收录更多作品。`,
+      description: `这是王佳奕持续整理个人设计实践的 Design Archive。目前第一册收录并整理了 ${book.year} 年的作品，同时以数字版本和实体印刷册呈现；未来还会继续收录新的作品，并制作新的册次。`,
       prompts: [
         "什么是 Design Archive？",
         "这本作品集创作于什么时候？",
@@ -252,7 +253,8 @@ export default function PersonalDesignLibraryPage() {
       type: "archive",
       title: "WELCOME TO THE ARCHIVE",
       date: book.year,
-      description: `这里是王佳奕的 Design Archive，收录并整理了${book.year}期间的个人设计实践与作品。`,
+      intro: `Design Archive 目前将 ${book.year} 年的个人设计实践整理成第一册作品集，未来会继续收录新作品并延续为新的册次。`,
+      description: `Design Archive 是王佳奕持续整理个人设计实践的系列作品集。目前第一册整理了 ${book.year} 年的作品，未来还会继续收录新的作品并制作新的册次。`,
       prompts: [
         "Design Archive 里收录了什么？",
         "为什么采用档案的形式？",

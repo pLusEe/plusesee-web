@@ -31,6 +31,7 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
   const typingRef = useRef(null);
   const panelDragRef = useRef(null);
   const contextCloseTimerRef = useRef(null);
+  const activeContextIdRef = useRef(null);
   const lastMessage = messages[messages.length - 1];
   const lastMessageRole = lastMessage?.role;
   const lastMessageText = lastMessage?.text;
@@ -82,6 +83,7 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
     clearContextCloseTimer();
     contextCloseTimerRef.current = window.setTimeout(() => {
       setActiveContext(null);
+      activeContextIdRef.current = null;
       setPosition(null);
       contextCloseTimerRef.current = null;
     }, CONTEXT_PANEL_EXIT_MS);
@@ -101,6 +103,7 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
     setPosition(null);
     setIsOpen(false);
     setActiveContext(null);
+    activeContextIdRef.current = null;
   }, [clearContextCloseTimer, clearPanelDrag, pathname]);
 
   useEffect(() => {
@@ -111,7 +114,17 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
 
       clearContextCloseTimer();
       clearPanelDrag();
-      if (nextContext?.title) setActiveContext(nextContext);
+      if (nextContext?.title) {
+        const nextContextId = nextContext.id || nextContext.title;
+        if (activeContextIdRef.current !== nextContextId) {
+          setMessages([]);
+          setInput("");
+          setTypingIndex(null);
+          if (typingRef.current) window.clearInterval(typingRef.current);
+        }
+        activeContextIdRef.current = nextContextId;
+        setActiveContext(nextContext);
+      }
       if (Number.isFinite(nextPosition?.left) && Number.isFinite(nextPosition?.top)) {
         setPosition(clampPosition(nextPosition.left, nextPosition.top));
       }
@@ -385,7 +398,10 @@ export default function FloatingAIChat({ inputPlaceholder = DEFAULT_PLACEHOLDER 
         <div className={styles.messagesArea}>
           {messages.length === 0 ? (
             <div className={styles.emptyState}>
-              <p>想了解什么问题？</p>
+              {activeContext?.intro ? (
+                <p className={styles.contextIntro}>{activeContext.intro}</p>
+              ) : null}
+              <p className={styles.emptyQuestion}>想了解什么问题？</p>
               <div className={styles.quickPrompts}>
                 {quickPrompts.map((prompt) => (
                   <button key={prompt} type="button" onClick={() => sendMessage(prompt)}>
