@@ -12,6 +12,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import * as THREE from "three";
 import ringThumbnailManifest from "../data/ring-thumbnails.json";
+import { openContextChatFromElement } from "../lib/contextChat";
 import styles from "./RingCarousel.module.css";
 
 const TARGET_RING_SLOTS = 45;
@@ -1032,6 +1033,26 @@ export default function RingCarousel({ items }) {
   const displayItems = useMemo(() => getDisplayItems(items), [items]);
   const hoveredItem = hoveredIndex !== null ? displayItems[hoveredIndex] : null;
   const selectedItem = selectedIndex !== null ? displayItems[selectedIndex] : null;
+  const selectedContext = useMemo(() => {
+    if (!selectedItem) return null;
+    const categoryLabel = resolveCategoryLabel(selectedItem);
+    return {
+      id: `home-ring-${selectedItem.id}`,
+      type: "project",
+      title: selectedItem.title,
+      date: selectedItem.date,
+      intro: "这是首页圆环当前选中的作品，可以继续了解它的项目背景、设计过程与最终呈现。",
+      description:
+        selectedItem.description ||
+        `这是首页圆环中的作品「${selectedItem.title}」，分类为 ${categoryLabel}。`,
+      prompts: [
+        `「${selectedItem.title}」是什么项目？`,
+        "这个项目解决了什么问题？",
+        "这个项目体现了哪些设计能力？",
+      ],
+      inputPlaceholder: "向 AI 询问这个作品",
+    };
+  }, [selectedItem]);
   const hoverLayoutActive = hoveredIndex !== null && selectedIndex === null;
   const effectiveCardSize = hoverLayoutActive ? HOVER_CARD_SIZE : cardSize;
   const effectiveRingSize = hoverLayoutActive ? HOVER_RING_SIZE : ringSize;
@@ -1284,9 +1305,18 @@ export default function RingCarousel({ items }) {
       <div className={styles.selectedCaption} aria-live="polite" aria-atomic="true">
         <AnimatePresence initial={false} mode="wait">
           {interactionReady && selectedItem && (
-            <motion.div
+            <motion.button
               key={`${selectedItem.id}-${selectedIndex}`}
-              className={styles.cardCaption}
+              type="button"
+              className={`${styles.cardCaption} ${styles.captionAskTrigger}`}
+              data-cursor-ai="true"
+              aria-label={`向 AI 询问：${selectedItem.title}`}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (selectedContext) {
+                  openContextChatFromElement(event.currentTarget, selectedContext);
+                }
+              }}
               initial={prefersReducedMotion ? false : { opacity: 0, y: 30 }}
               animate={
                 prefersReducedMotion
@@ -1317,7 +1347,7 @@ export default function RingCarousel({ items }) {
                 {resolveCategoryLabel(selectedItem)}
               </span>
               <span className={styles.cardCaptionTitle}>{selectedItem.title}</span>
-            </motion.div>
+            </motion.button>
           )}
         </AnimatePresence>
       </div>

@@ -30,6 +30,16 @@
   will-change: transform, opacity;
 }
 
+.captionAskTrigger {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  pointer-events: auto;
+  cursor: default;
+  font: inherit;
+}
+
 .selectedCaption {
   position: absolute;
   top: 69%;

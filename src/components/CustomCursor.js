@@ -82,17 +82,16 @@ export default function CustomCursor() {
       }}
     >
       {hoverData.active && <span className={styles.text}>{hoverData.text}</span>}
-      {isAI && (
-        <span className={styles.aiCue} aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path
-              className={styles.aiStar}
-              d="M12 3.1c.4 5.05 3.25 7.9 8.3 8.3-5.05.4-7.9 3.25-8.3 8.3-.4-5.05-3.25-7.9-8.3-8.3 5.05-.4 7.9-3.25 8.3-8.3Z"
-            />
-            <circle className={styles.aiOrbitDot} cx="12" cy="12" r="1.25" />
-          </svg>
-        </span>
-      )}
+      <span className={styles.aiCue} aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path
+            className={styles.aiStar}
+            d="M12 3.1c.4 5.05 3.25 7.9 8.3 8.3-5.05.4-7.9 3.25-8.3 8.3-.4-5.05-3.25-7.9-8.3-8.3 5.05-.4 7.9-3.25 8.3-8.3Z"
+          />
+          <circle className={styles.aiOrbitDot} cx="12" cy="12" r="1.25" />
+        </svg>
+        <span className={styles.aiLabel}>ASK AI</span>
+      </span>
       <span className={styles.directionCue} aria-hidden="true">
         <svg
           className={`${styles.directionIcon} ${
